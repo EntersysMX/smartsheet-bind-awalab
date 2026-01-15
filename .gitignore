@@ -1,0 +1,115 @@
+# =====================================================
+# .gitignore - Smartsheet-Bind ERP Middleware
+# =====================================================
+
+# Archivos de entorno (NUNCA commitear credenciales)
+.env
+.env.local
+.env.*.local
+*.env
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual environments
+.venv/
+venv/
+ENV/
+env/
+env.bak/
+venv.bak/
+
+# IDE y editores
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-workspace
+*.sublime-project
+.project
+.pydevproject
+.settings/
+*.code-workspace
+
+# Logs
+*.log
+logs/
+log/
+middleware.log
+
+# Base de datos locales
+*.db
+*.sqlite
+*.sqlite3
+
+# Cache
+.cache/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+htmlcov/
+.coverage
+.coverage.*
+coverage.xml
+*.cover
+*.coverage
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# Docker (archivos locales, no la configuracion)
+.docker/
+
+# Datos persistentes locales
+data/
+volumes/
+
+# Archivos temporales
+*.tmp
+*.temp
+*.bak
+*.backup
+tmp/
+temp/
+
+# Jupyter Notebooks checkpoints
+.ipynb_checkpoints/
+
+# Archivos de testing
+.tox/
+.nox/
+
+# Documentacion generada
+docs/_build/
+site/
+
+# Prompt original (si existe)
+prompt_principal.md

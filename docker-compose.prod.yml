@@ -1,0 +1,68 @@
+# =====================================================
+# Docker Compose - Produccion con Traefik
+# =====================================================
+# Uso: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#
+# IMPORTANTE: Configurar el dominio en SMARTSHEET_BIND_DOMAIN en .env
+# Ejemplo: SMARTSHEET_BIND_DOMAIN=smartsheet-bind.awalab.entersys.mx
+
+version: "3.8"
+
+services:
+  middleware:
+    restart: always
+
+    # No exponer puertos directamente (Traefik los maneja)
+    ports: []
+
+    environment:
+      - DEBUG_MODE=false
+      - LOG_LEVEL=INFO
+      - SERVER_PORT=8001
+
+    # Labels de Traefik para routing y SSL automatico
+    labels:
+      - "traefik.enable=true"
+      # Router HTTP -> HTTPS redirect
+      - "traefik.http.routers.smartsheet-bind-http.rule=Host(`${SMARTSHEET_BIND_DOMAIN:-smartsheet-bind.awalab.entersys.mx}`)"
+      - "traefik.http.routers.smartsheet-bind-http.entrypoints=web"
+      - "traefik.http.routers.smartsheet-bind-http.middlewares=redirect-to-https"
+      # Router HTTPS principal
+      - "traefik.http.routers.smartsheet-bind.rule=Host(`${SMARTSHEET_BIND_DOMAIN:-smartsheet-bind.awalab.entersys.mx}`)"
+      - "traefik.http.routers.smartsheet-bind.entrypoints=websecure"
+      - "traefik.http.routers.smartsheet-bind.tls=true"
+      - "traefik.http.routers.smartsheet-bind.tls.certresolver=letsencrypt"
+      # Servicio backend
+      - "traefik.http.services.smartsheet-bind.loadbalancer.server.port=8001"
+      # Middleware redirect
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
+      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
+
+    networks:
+      - traefik-public
+      - internal
+
+    # Recursos para produccion
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+    # Logging mas robusto
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "20m"
+        max-file: "5"
+
+# Redes
+networks:
+  traefik-public:
+    external: true
+  internal:
+    driver: bridge
+    name: smartsheet-bind-internal

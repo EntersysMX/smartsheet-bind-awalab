@@ -1,0 +1,76 @@
+# =====================================================
+# Docker Compose - Smartsheet-Bind ERP Middleware
+# =====================================================
+# Uso:
+#   Desarrollo:  docker-compose up -d
+#   Produccion:  docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
+#   Logs:        docker-compose logs -f middleware
+#   Detener:     docker-compose down
+
+version: "3.8"
+
+services:
+  middleware:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: smartsheet-bind-middleware:latest
+    container_name: smartsheet-bind-awalab
+    restart: unless-stopped
+
+    # Variables de entorno desde archivo .env
+    env_file:
+      - .env
+
+    # Variables de entorno adicionales/override
+    environment:
+      - SERVER_HOST=0.0.0.0
+      - SERVER_PORT=8001
+      - PYTHONUNBUFFERED=1
+
+    # Puerto para desarrollo local (comentar en produccion con Traefik)
+    ports:
+      - "8001:8001"
+
+    volumes:
+      # Volumen para logs persistentes
+      - middleware-logs:/app/logs
+
+    networks:
+      - internal
+
+    # Limites de recursos (ajustados segun guia del servidor)
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: 512M
+        reservations:
+          cpus: "0.1"
+          memory: 128M
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "python", "-c", "import requests; requests.get('http://localhost:8001/health', timeout=5)"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+    # Logging
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# Redes
+networks:
+  internal:
+    driver: bridge
+    name: smartsheet-bind-internal
+
+# Volumenes persistentes
+volumes:
+  middleware-logs:
+    name: smartsheet-bind-logs
