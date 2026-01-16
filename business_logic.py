@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from decimal import Decimal, InvalidOperation
 from typing import Any, Optional
 
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, Field, field_validator
 
 from bind_client import BindClient, BindAPIError
 from smartsheet_service import SmartsheetService, SmartsheetServiceError
@@ -25,10 +25,11 @@ class InvoiceItemModel(BaseModel):
     descripcion: Optional[str] = Field(None, max_length=1000)
     cantidad: Decimal = Field(..., gt=0)
     precio_unitario: Decimal = Field(..., ge=0)
-    clave_sat_producto: str = Field(..., regex=r"^\d{8}$")
-    clave_sat_unidad: str = Field(..., regex=r"^[A-Z0-9]{2,3}$")
+    clave_sat_producto: str = Field(..., pattern=r"^\d{8}$")
+    clave_sat_unidad: str = Field(..., pattern=r"^[A-Z0-9]{2,3}$")
 
-    @validator("cantidad", "precio_unitario", pre=True)
+    @field_validator("cantidad", "precio_unitario", mode="before")
+    @classmethod
     def parse_decimal(cls, v):
         if isinstance(v, str):
             v = v.replace(",", "").replace("$", "").strip()
@@ -41,7 +42,7 @@ class InvoiceItemModel(BaseModel):
 class InvoiceRequestModel(BaseModel):
     """Modelo completo para solicitud de factura desde Smartsheet."""
     row_id: int
-    rfc: str = Field(..., regex=r"^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$")
+    rfc: str = Field(..., pattern=r"^[A-ZÑ&]{3,4}\d{6}[A-Z0-9]{3}$")
     razon_social: Optional[str] = None
     concepto: str
     descripcion: Optional[str] = None
@@ -49,13 +50,14 @@ class InvoiceRequestModel(BaseModel):
     precio_unitario: Decimal
     clave_sat_producto: str
     clave_sat_unidad: str
-    metodo_pago: str = Field(..., regex=r"^(PUE|PPD)$")
-    forma_pago: str = Field(..., regex=r"^\d{2}$")
-    uso_cfdi: str = Field(..., regex=r"^[A-Z]\d{2}$")
-    regimen_fiscal: Optional[str] = Field(None, regex=r"^\d{3}$")
-    codigo_postal: Optional[str] = Field(None, regex=r"^\d{5}$")
+    metodo_pago: str = Field(..., pattern=r"^(PUE|PPD)$")
+    forma_pago: str = Field(..., pattern=r"^\d{2}$")
+    uso_cfdi: str = Field(..., pattern=r"^[A-Z]\d{2}$")
+    regimen_fiscal: Optional[str] = Field(None, pattern=r"^\d{3}$")
+    codigo_postal: Optional[str] = Field(None, pattern=r"^\d{5}$")
 
-    @validator("rfc", pre=True)
+    @field_validator("rfc", mode="before")
+    @classmethod
     def normalize_rfc(cls, v):
         return v.strip().upper() if v else v
 

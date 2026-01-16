@@ -6,8 +6,6 @@
 # IMPORTANTE: Configurar el dominio en SMARTSHEET_BIND_DOMAIN en .env
 # Dominio: smartsheet-bind-awalab.entersys.mx
 
-version: "3.8"
-
 services:
   middleware:
     restart: always

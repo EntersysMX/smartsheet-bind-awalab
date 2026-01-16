@@ -7,8 +7,6 @@
 #   Logs:        docker-compose logs -f middleware
 #   Detener:     docker-compose down
 
-version: "3.8"
-
 services:
   middleware:
     build:
