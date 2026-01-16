@@ -4,7 +4,7 @@
 # Uso: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up -d
 #
 # IMPORTANTE: Configurar el dominio en SMARTSHEET_BIND_DOMAIN en .env
-# Ejemplo: SMARTSHEET_BIND_DOMAIN=smartsheet-bind.awalab.entersys.mx
+# Dominio: smartsheet-bind-awalab.entersys.mx
 
 version: "3.8"
 
@@ -24,11 +24,11 @@ services:
     labels:
       - "traefik.enable=true"
       # Router HTTP -> HTTPS redirect
-      - "traefik.http.routers.smartsheet-bind-http.rule=Host(`${SMARTSHEET_BIND_DOMAIN:-smartsheet-bind.awalab.entersys.mx}`)"
+      - "traefik.http.routers.smartsheet-bind-http.rule=Host(`${SMARTSHEET_BIND_DOMAIN:-smartsheet-bind-awalab.entersys.mx}`)"
       - "traefik.http.routers.smartsheet-bind-http.entrypoints=web"
       - "traefik.http.routers.smartsheet-bind-http.middlewares=redirect-to-https"
       # Router HTTPS principal
-      - "traefik.http.routers.smartsheet-bind.rule=Host(`${SMARTSHEET_BIND_DOMAIN:-smartsheet-bind.awalab.entersys.mx}`)"
+      - "traefik.http.routers.smartsheet-bind.rule=Host(`${SMARTSHEET_BIND_DOMAIN:-smartsheet-bind-awalab.entersys.mx}`)"
       - "traefik.http.routers.smartsheet-bind.entrypoints=websecure"
       - "traefik.http.routers.smartsheet-bind.tls=true"
       - "traefik.http.routers.smartsheet-bind.tls.certresolver=letsencrypt"
