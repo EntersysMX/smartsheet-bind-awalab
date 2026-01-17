@@ -21,10 +21,7 @@ services:
     # Labels de Traefik para routing y SSL automatico
     labels:
       - "traefik.enable=true"
-      # Router HTTP -> HTTPS redirect
-      - "traefik.http.routers.smartsheet-bind-http.rule=Host(`${SMARTSHEET_BIND_DOMAIN:-smartsheet-bind-awalab.entersys.mx}`)"
-      - "traefik.http.routers.smartsheet-bind-http.entrypoints=web"
-      - "traefik.http.routers.smartsheet-bind-http.middlewares=redirect-to-https"
+      - "traefik.docker.network=traefik-public"
       # Router HTTPS principal
       - "traefik.http.routers.smartsheet-bind.rule=Host(`${SMARTSHEET_BIND_DOMAIN:-smartsheet-bind-awalab.entersys.mx}`)"
       - "traefik.http.routers.smartsheet-bind.entrypoints=websecure"
@@ -32,9 +29,6 @@ services:
       - "traefik.http.routers.smartsheet-bind.tls.certresolver=letsencrypt"
       # Servicio backend
       - "traefik.http.services.smartsheet-bind.loadbalancer.server.port=8001"
-      # Middleware redirect
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.scheme=https"
-      - "traefik.http.middlewares.redirect-to-https.redirectscheme.permanent=true"
 
     networks:
       - traefik-public
