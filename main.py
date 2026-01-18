@@ -214,8 +214,12 @@ async def run_inventory_sync():
     """Ejecuta la sincronización de inventario."""
     logger.info("Ejecutando sincronización programada de inventario...")
     try:
+        # Obtener sheet_id desde la base de datos
+        config = get_process_config("sync_inventory")
+        sheet_id = int(config.smartsheet_sheet_id) if config and config.smartsheet_sheet_id else None
+
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, sync_inventory)
+        result = await loop.run_in_executor(None, lambda: sync_inventory(sheet_id=sheet_id))
         logger.info(f"Sincronización completada: {result}")
         # Registrar en historial
         add_to_history("sync_inventory", "Sincronización de Inventario",
@@ -231,8 +235,12 @@ async def run_invoices_sync():
     """Ejecuta la sincronización de facturas Bind -> Smartsheet."""
     logger.info("Ejecutando sincronización programada de facturas...")
     try:
+        # Obtener sheet_id desde la base de datos
+        config = get_process_config("sync_invoices")
+        sheet_id = int(config.smartsheet_sheet_id) if config and config.smartsheet_sheet_id else None
+
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, sync_invoices_from_bind)
+        result = await loop.run_in_executor(None, lambda: sync_invoices_from_bind(sheet_id=sheet_id))
         logger.info(f"Sincronización de facturas completada: {result}")
         # Registrar en historial
         add_to_history("sync_invoices", "Sincronización de Facturas",
