@@ -33,6 +33,8 @@ services:
     volumes:
       # Volumen para logs persistentes
       - middleware-logs:/app/logs
+      # Volumen para base de datos de configuración
+      - middleware-data:/app/data
 
     networks:
       - internal
@@ -72,3 +74,5 @@ networks:
 volumes:
   middleware-logs:
     name: smartsheet-bind-logs
+  middleware-data:
+    name: smartsheet-bind-data

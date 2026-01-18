@@ -34,6 +34,7 @@ from business_logic import (
 )
 from config import settings
 from smartsheet_service import SmartsheetService
+from database import init_db, seed_default_configs, get_process_config, get_all_process_configs, create_or_update_process_config
 
 # ========== CONFIGURACIÓN DE LOGGING ==========
 
@@ -79,6 +80,11 @@ async def lifespan(app: FastAPI):
     """Manejo del ciclo de vida de la aplicación."""
     # Startup
     logger.info("Iniciando middleware Smartsheet-Bind ERP...")
+
+    # Inicializar base de datos
+    init_db()
+    seed_default_configs()
+    logger.info("Base de datos de configuración inicializada")
 
     # Validar configuración
     config_errors = settings.validate()
@@ -750,6 +756,10 @@ async def admin_get_job_details(job_id: str):
     metadata = JOB_METADATA.get(job_id, {})
     last_run = job_last_run.get(job_id, {})
 
+    # Obtener configuración de la base de datos
+    db_config = get_process_config(job_id)
+    process_config = db_config.to_dict() if db_config else None
+
     # Obtener historial reciente de este job
     recent_history = [h for h in job_history if h["job_id"] == job_id][:10]
 
@@ -775,6 +785,7 @@ async def admin_get_job_details(job_id: str):
             "pending": job.pending,
             "paused": job.next_run_time is None,
         },
+        "process_config": process_config,
         "last_run": last_run,
         "recent_history": recent_history,
     }
@@ -915,6 +926,70 @@ async def admin_get_stats():
             "successful": successful,
             "failed": failed,
         },
+    }
+
+
+# ========== API DE CONFIGURACIÓN DE PROCESOS ==========
+
+@app.get("/api/admin/process-configs")
+async def admin_get_process_configs():
+    """Obtiene todas las configuraciones de procesos desde la base de datos."""
+    configs = get_all_process_configs()
+    return {
+        "success": True,
+        "timestamp": datetime.now(CDMX_TZ).isoformat(),
+        "configs": [c.to_dict() for c in configs],
+    }
+
+
+@app.get("/api/admin/process-configs/{job_id}")
+async def admin_get_process_config(job_id: str):
+    """Obtiene la configuración de un proceso específico."""
+    config = get_process_config(job_id)
+    if not config:
+        raise HTTPException(status_code=404, detail=f"Configuración para '{job_id}' no encontrada")
+    return {
+        "success": True,
+        "timestamp": datetime.now(CDMX_TZ).isoformat(),
+        "config": config.to_dict(),
+    }
+
+
+class ProcessConfigUpdate(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    smartsheet_sheet_id: Optional[str] = None
+    smartsheet_sheet_name: Optional[str] = None
+    interval_minutes: Optional[int] = None
+    is_active: Optional[bool] = None
+
+
+@app.put("/api/admin/process-configs/{job_id}")
+async def admin_update_process_config(job_id: str, update: ProcessConfigUpdate):
+    """Actualiza la configuración de un proceso."""
+    config = get_process_config(job_id)
+    if not config:
+        raise HTTPException(status_code=404, detail=f"Configuración para '{job_id}' no encontrada")
+
+    # Actualizar solo los campos proporcionados
+    updated = create_or_update_process_config(
+        job_id=job_id,
+        name=update.name or config.name,
+        description=update.description or config.description,
+        smartsheet_sheet_id=update.smartsheet_sheet_id or config.smartsheet_sheet_id,
+        smartsheet_sheet_name=update.smartsheet_sheet_name or config.smartsheet_sheet_name,
+        interval_minutes=update.interval_minutes if update.interval_minutes is not None else config.interval_minutes,
+        is_active=update.is_active if update.is_active is not None else config.is_active,
+        source_system=config.source_system,
+        target_system=config.target_system,
+        sync_direction=config.sync_direction,
+    )
+
+    return {
+        "success": True,
+        "timestamp": datetime.now(CDMX_TZ).isoformat(),
+        "config": updated.to_dict(),
+        "message": f"Configuración de '{job_id}' actualizada",
     }
 
 
@@ -1107,8 +1182,12 @@ def get_embedded_dashboard() -> str:
                             <p id="details-endpoint" class="font-mono text-xs sm:text-sm text-blue-400 break-all"></p>
                         </div>
                         <div>
-                            <p class="text-xs text-gray-400 uppercase">Variable Config</p>
-                            <p id="details-sheet-var" class="font-mono text-xs sm:text-sm text-purple-400 break-all"></p>
+                            <p class="text-xs text-gray-400 uppercase">Smartsheet ID</p>
+                            <p id="details-sheet-id" class="font-mono text-xs sm:text-sm text-green-400 break-all"></p>
+                        </div>
+                        <div class="sm:col-span-2">
+                            <p class="text-xs text-gray-400 uppercase">Hoja Smartsheet</p>
+                            <p id="details-sheet-name" class="font-semibold text-sm sm:text-base text-green-300"></p>
                         </div>
                     </div>
 
@@ -1460,7 +1539,11 @@ def get_embedded_dashboard() -> str:
                     document.getElementById('details-interval').textContent = intervalMin + ' minutos';
                     document.getElementById('details-next-run').textContent = formatDate(job.next_run);
                     document.getElementById('details-endpoint').textContent = job.endpoint || '-';
-                    document.getElementById('details-sheet-var').textContent = job.sheet_var || '-';
+
+                    // Datos de la base de datos
+                    const config = data.process_config;
+                    document.getElementById('details-sheet-id').textContent = config?.smartsheet_sheet_id || '-';
+                    document.getElementById('details-sheet-name').textContent = config?.smartsheet_sheet_name || 'No configurado';
 
                     // Details HTML
                     document.getElementById('details-content').innerHTML = job.details_html;
