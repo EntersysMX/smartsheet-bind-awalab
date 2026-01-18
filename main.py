@@ -23,6 +23,7 @@ from business_logic import (
     process_invoice_request,
     sync_inventory,
     sync_inventory_movements,
+    sync_invoices_from_bind,
 )
 from config import settings
 from smartsheet_service import SmartsheetService
@@ -79,7 +80,7 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Error verificando conexiones: {e}")
 
-    # Configurar scheduler
+    # Configurar scheduler para inventario
     if settings.SYNC_INVENTORY_INTERVAL_MINUTES > 0:
         scheduler.add_job(
             run_inventory_sync,
@@ -88,11 +89,29 @@ async def lifespan(app: FastAPI):
             name="Sincronización de Inventario",
             replace_existing=True,
         )
-        scheduler.start()
         logger.info(
-            f"Scheduler iniciado. Sincronización cada "
+            f"Job de inventario configurado cada "
             f"{settings.SYNC_INVENTORY_INTERVAL_MINUTES} minutos."
         )
+
+    # Configurar scheduler para facturas (Bind -> Smartsheet)
+    if settings.SYNC_INVOICES_INTERVAL_MINUTES > 0:
+        scheduler.add_job(
+            run_invoices_sync,
+            trigger=IntervalTrigger(minutes=settings.SYNC_INVOICES_INTERVAL_MINUTES),
+            id="sync_invoices",
+            name="Sincronización de Facturas Bind -> Smartsheet",
+            replace_existing=True,
+        )
+        logger.info(
+            f"Job de facturas configurado cada "
+            f"{settings.SYNC_INVOICES_INTERVAL_MINUTES} minutos."
+        )
+
+    # Iniciar scheduler si hay jobs configurados
+    if scheduler.get_jobs():
+        scheduler.start()
+        logger.info("Scheduler iniciado con los jobs configurados.")
 
     logger.info(f"Servidor listo en puerto {settings.SERVER_PORT}")
 
@@ -165,6 +184,15 @@ async def run_inventory_sync():
     loop = asyncio.get_event_loop()
     result = await loop.run_in_executor(None, sync_inventory)
     logger.info(f"Sincronización completada: {result}")
+    return result
+
+
+async def run_invoices_sync():
+    """Ejecuta la sincronización de facturas Bind -> Smartsheet."""
+    logger.info("Ejecutando sincronización programada de facturas...")
+    loop = asyncio.get_event_loop()
+    result = await loop.run_in_executor(None, sync_invoices_from_bind)
+    logger.info(f"Sincronización de facturas completada: {result}")
     return result
 
 
@@ -322,7 +350,7 @@ async def trigger_inventory_sync(background_tasks: BackgroundTasks):
 
 @app.get("/sync/inventory/status", response_model=SyncResponse)
 async def inventory_sync_status():
-    """Obtiene estado de la última sincronización."""
+    """Obtiene estado de la última sincronización de inventario."""
     job = scheduler.get_job("sync_inventory")
 
     if job:
@@ -341,6 +369,44 @@ async def inventory_sync_status():
         success=False,
         timestamp=datetime.now().isoformat(),
         message="Scheduler no activo",
+    )
+
+
+@app.post("/sync/invoices", response_model=SyncResponse)
+async def trigger_invoices_sync(background_tasks: BackgroundTasks):
+    """Dispara sincronización manual de facturas Bind -> Smartsheet."""
+    logger.info("Sincronización de facturas disparada manualmente")
+
+    background_tasks.add_task(run_invoices_sync)
+
+    return SyncResponse(
+        success=True,
+        timestamp=datetime.now().isoformat(),
+        message="Sincronización de facturas iniciada en background",
+    )
+
+
+@app.get("/sync/invoices/status", response_model=SyncResponse)
+async def invoices_sync_status():
+    """Obtiene estado del scheduler de sincronización de facturas."""
+    job = scheduler.get_job("sync_invoices")
+
+    if job:
+        next_run = job.next_run_time.isoformat() if job.next_run_time else None
+        return SyncResponse(
+            success=True,
+            timestamp=datetime.now().isoformat(),
+            message="Scheduler de facturas activo",
+            details={
+                "next_run": next_run,
+                "interval_minutes": settings.SYNC_INVOICES_INTERVAL_MINUTES,
+            },
+        )
+
+    return SyncResponse(
+        success=False,
+        timestamp=datetime.now().isoformat(),
+        message="Scheduler de facturas no activo",
     )
 
 

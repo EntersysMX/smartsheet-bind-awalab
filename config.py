@@ -45,6 +45,7 @@ class Settings:
 
     # ========== SCHEDULER ==========
     SYNC_INVENTORY_INTERVAL_MINUTES: int = int(os.getenv("SYNC_INVENTORY_INTERVAL_MINUTES", "60"))
+    SYNC_INVOICES_INTERVAL_MINUTES: int = int(os.getenv("SYNC_INVOICES_INTERVAL_MINUTES", "2"))
 
     @classmethod
     def validate(cls) -> list[str]:
