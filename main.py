@@ -9,6 +9,10 @@ import sys
 from contextlib import asynccontextmanager
 from datetime import datetime
 from typing import Optional
+from zoneinfo import ZoneInfo
+
+# Zona horaria de Ciudad de México
+CDMX_TZ = ZoneInfo("America/Mexico_City")
 
 import uvicorn
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
@@ -57,7 +61,7 @@ MAX_HISTORY = 100
 def add_to_history(job_id: str, job_name: str, status: str, details: dict = None):
     """Agrega una entrada al historial de ejecuciones."""
     entry = {
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(CDMX_TZ).isoformat(),
         "job_id": job_id,
         "job_name": job_name,
         "status": status,
@@ -258,7 +262,7 @@ async def root():
     """Endpoint raíz - health check básico."""
     return HealthResponse(
         status="ok",
-        timestamp=datetime.now().isoformat(),
+        timestamp=datetime.now(CDMX_TZ).isoformat(),
     )
 
 
@@ -286,7 +290,7 @@ async def health_check():
 
     return HealthResponse(
         status="ok" if (bind_ok is not False and smartsheet_ok is not False) else "degraded",
-        timestamp=datetime.now().isoformat(),
+        timestamp=datetime.now(CDMX_TZ).isoformat(),
         bind_connected=bind_ok,
         smartsheet_connected=smartsheet_ok,
     )
@@ -381,7 +385,7 @@ async def trigger_inventory_sync(background_tasks: BackgroundTasks):
 
     return SyncResponse(
         success=True,
-        timestamp=datetime.now().isoformat(),
+        timestamp=datetime.now(CDMX_TZ).isoformat(),
         message="Sincronización de inventario iniciada en background",
     )
 
@@ -395,7 +399,7 @@ async def inventory_sync_status():
         next_run = job.next_run_time.isoformat() if job.next_run_time else None
         return SyncResponse(
             success=True,
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(CDMX_TZ).isoformat(),
             message="Scheduler activo",
             details={
                 "next_run": next_run,
@@ -405,7 +409,7 @@ async def inventory_sync_status():
 
     return SyncResponse(
         success=False,
-        timestamp=datetime.now().isoformat(),
+        timestamp=datetime.now(CDMX_TZ).isoformat(),
         message="Scheduler no activo",
     )
 
@@ -419,7 +423,7 @@ async def trigger_invoices_sync(background_tasks: BackgroundTasks):
 
     return SyncResponse(
         success=True,
-        timestamp=datetime.now().isoformat(),
+        timestamp=datetime.now(CDMX_TZ).isoformat(),
         message="Sincronización de facturas iniciada en background",
     )
 
@@ -433,7 +437,7 @@ async def invoices_sync_status():
         next_run = job.next_run_time.isoformat() if job.next_run_time else None
         return SyncResponse(
             success=True,
-            timestamp=datetime.now().isoformat(),
+            timestamp=datetime.now(CDMX_TZ).isoformat(),
             message="Scheduler de facturas activo",
             details={
                 "next_run": next_run,
@@ -443,7 +447,7 @@ async def invoices_sync_status():
 
     return SyncResponse(
         success=False,
-        timestamp=datetime.now().isoformat(),
+        timestamp=datetime.now(CDMX_TZ).isoformat(),
         message="Scheduler de facturas no activo",
     )
 
@@ -730,7 +734,7 @@ async def admin_list_jobs():
 
     return {
         "success": True,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(CDMX_TZ).isoformat(),
         "scheduler_running": scheduler.running,
         "jobs": jobs,
     }
@@ -781,7 +785,7 @@ async def admin_get_history(limit: int = 50):
     """Obtiene el historial de ejecuciones."""
     return {
         "success": True,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(CDMX_TZ).isoformat(),
         "history": job_history[:limit],
     }
 
@@ -800,7 +804,7 @@ async def admin_pause_job(job_id: str):
     return {
         "success": True,
         "message": f"Job '{job_id}' pausado",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(CDMX_TZ).isoformat(),
     }
 
 
@@ -818,7 +822,7 @@ async def admin_resume_job(job_id: str):
     return {
         "success": True,
         "message": f"Job '{job_id}' reanudado",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(CDMX_TZ).isoformat(),
     }
 
 
@@ -843,7 +847,7 @@ async def admin_run_job_now(job_id: str, background_tasks: BackgroundTasks):
     return {
         "success": True,
         "message": f"Job '{job_id}' iniciado",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(CDMX_TZ).isoformat(),
     }
 
 
@@ -867,7 +871,7 @@ async def admin_update_interval(job_id: str, minutes: int):
     return {
         "success": True,
         "message": f"Job '{job_id}' reprogramado a cada {minutes} minutos",
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(CDMX_TZ).isoformat(),
     }
 
 
@@ -897,7 +901,7 @@ async def admin_get_stats():
 
     return {
         "success": True,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": datetime.now(CDMX_TZ).isoformat(),
         "connections": {
             "bind": bind_ok,
             "smartsheet": smartsheet_ok,
