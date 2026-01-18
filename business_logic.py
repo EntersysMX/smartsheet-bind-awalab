@@ -338,6 +338,42 @@ def process_invoice_request(
     return result
 
 
+def get_existing_inventory_map(ss_service: SmartsheetService, sheet_id: int) -> dict[str, int]:
+    """
+    Obtiene un mapa de ID Producto -> row_id para productos existentes en Smartsheet.
+
+    Returns:
+        dict {product_id: row_id}
+    """
+    existing_map = {}
+    try:
+        sheet = ss_service.client.Sheets.get_sheet(sheet_id)
+
+        # Encontrar índice de columna "ID Producto"
+        id_col_idx = None
+        for idx, col in enumerate(sheet.columns):
+            if col.title == "ID Producto":
+                id_col_idx = idx
+                break
+
+        if id_col_idx is None:
+            logger.warning("No se encontró columna 'ID Producto' en la hoja")
+            return existing_map
+
+        # Mapear ID Producto -> row_id
+        for row in sheet.rows:
+            if row.cells and len(row.cells) > id_col_idx:
+                cell_value = row.cells[id_col_idx].value
+                if cell_value:
+                    existing_map[str(cell_value)] = row.id
+
+        logger.info(f"Mapa de productos existentes: {len(existing_map)} productos")
+    except Exception as e:
+        logger.error(f"Error obteniendo mapa de productos: {e}")
+
+    return existing_map
+
+
 def sync_inventory(
     ss_service: SmartsheetService = None,
     bind_client: BindClient = None,
@@ -345,12 +381,12 @@ def sync_inventory(
     warehouse_id: str = None,
 ) -> dict:
     """
-    Sincroniza el inventario de Bind ERP a Smartsheet.
+    Sincroniza el inventario de Bind ERP a Smartsheet con lógica UPSERT.
 
     Flujo:
-    1. Obtiene inventario actual de Bind
-    2. Obtiene productos para información adicional
-    3. Actualiza/inserta filas en Smartsheet
+    1. Obtiene productos de Bind ERP
+    2. Compara con productos existentes en Smartsheet por ID Producto
+    3. Actualiza existentes o inserta nuevos
 
     Args:
         ss_service: Servicio Smartsheet
@@ -361,80 +397,124 @@ def sync_inventory(
     Returns:
         Dict con estadísticas de sincronización
     """
+    from zoneinfo import ZoneInfo
+    cdmx_tz = ZoneInfo("America/Mexico_City")
+
     ss_service = ss_service or SmartsheetService()
     bind_client = bind_client or BindClient()
     sheet_id = sheet_id or settings.SMARTSHEET_INVENTORY_SHEET_ID
     warehouse_id = warehouse_id or settings.BIND_WAREHOUSE_ID
 
+    now_cdmx = datetime.now(cdmx_tz)
+
     result = {
         "success": False,
-        "timestamp": datetime.now().isoformat(),
-        "items_synced": 0,
-        "items_updated": 0,
-        "items_added": 0,
+        "timestamp": now_cdmx.isoformat(),
+        "timezone": "America/Mexico_City",
+        "total_in_bind": 0,
+        "inserted": 0,
+        "updated": 0,
         "errors": [],
     }
 
     try:
-        logger.info(f"Iniciando sincronización de inventario. Almacén: {warehouse_id}")
+        logger.info(f"Iniciando sincronización UPSERT de inventario. Almacén: {warehouse_id}")
 
-        # Obtener inventario de Bind
-        inventory = bind_client.get_inventory(warehouse_id)
-        logger.info(f"Obtenidos {len(inventory)} items de inventario de Bind")
+        # Obtener productos de Bind
+        products = bind_client.get_products()
+        result["total_in_bind"] = len(products)
+        logger.info(f"Productos obtenidos de Bind: {len(products)}")
 
-        if not inventory:
+        if not products:
             result["success"] = True
-            result["message"] = "No hay items de inventario para sincronizar"
+            result["message"] = "No hay productos en Bind para sincronizar"
             return result
 
-        # Obtener hoja actual de Smartsheet para comparar
-        try:
-            current_df = ss_service.get_sheet_as_dataframe(sheet_id)
-            existing_codes = set(current_df.get("Codigo", pd.Series()).dropna())
-        except Exception:
-            existing_codes = set()
-            logger.warning("No se pudo obtener hoja existente, se asumirá vacía")
+        # Obtener mapa de productos existentes en Smartsheet
+        existing_map = get_existing_inventory_map(ss_service, sheet_id)
 
-        # Procesar cada item de inventario
-        for item in inventory:
+        # Obtener estructura de columnas de la hoja
+        sheet = ss_service.client.Sheets.get_sheet(sheet_id)
+        column_map = {col.title: col.id for col in sheet.columns}
+
+        rows_to_add = []
+        rows_to_update = []
+
+        for product in products:
             try:
-                product_code = item.get("ProductCode") or item.get("Code")
-                if not product_code:
+                product_id = str(product.get("ID") or product.get("id", ""))
+                if not product_id:
                     continue
 
-                # Preparar datos para Smartsheet
+                # Preparar datos del producto
                 row_data = {
-                    "Codigo": product_code,
-                    "Nombre": item.get("ProductName") or item.get("Name"),
-                    "Existencia": item.get("Quantity") or item.get("Stock", 0),
-                    "Almacen": item.get("WarehouseName") or warehouse_id,
-                    "Ultima Actualizacion": datetime.now().strftime("%Y-%m-%d %H:%M"),
+                    "ID Producto": product_id,
+                    "Codigo": product.get("Code") or product.get("code", ""),
+                    "Nombre Producto": product.get("Name") or product.get("name", ""),
+                    "Descripcion": product.get("Description") or product.get("description", ""),
+                    "Existencias": product.get("Stock") or product.get("Quantity") or 0,
+                    "Unidad": product.get("Unit") or product.get("UnitName") or "",
+                    "Precio Unitario": product.get("Price") or product.get("UnitPrice") or 0,
+                    "Almacen ID": warehouse_id or "",
+                    "Almacen Nombre": product.get("WarehouseName") or "",
+                    "Ultima Actualizacion": now_cdmx.strftime("%Y-%m-%d %H:%M:%S"),
                 }
 
-                if product_code in existing_codes:
-                    # Actualizar fila existente
-                    # Buscar row_id en el DataFrame
-                    matching_rows = current_df[current_df["Codigo"] == product_code]
-                    if not matching_rows.empty:
-                        row_id = matching_rows.iloc[0]["row_id"]
-                        ss_service.update_row_cells(sheet_id, row_id, row_data)
-                        result["items_updated"] += 1
-                else:
-                    # Nota: Agregar nuevas filas requiere lógica adicional
-                    # Por ahora solo actualizamos existentes
-                    logger.debug(f"Producto {product_code} no existe en Smartsheet")
-                    result["items_added"] += 1
+                # Construir celdas
+                cells = []
+                for col_title, value in row_data.items():
+                    if col_title in column_map:
+                        cells.append({
+                            "columnId": column_map[col_title],
+                            "value": value if value is not None else "",
+                        })
 
-                result["items_synced"] += 1
+                if product_id in existing_map:
+                    # UPDATE: producto existe
+                    row = ss_service.client.models.Row()
+                    row.id = existing_map[product_id]
+                    row.cells = [ss_service.client.models.Cell(cell) for cell in cells]
+                    rows_to_update.append(row)
+                else:
+                    # INSERT: producto nuevo
+                    row = ss_service.client.models.Row()
+                    row.to_bottom = True
+                    row.cells = [ss_service.client.models.Cell(cell) for cell in cells]
+                    rows_to_add.append(row)
 
             except Exception as e:
-                logger.error(f"Error sincronizando item {item}: {e}")
+                logger.error(f"Error procesando producto {product}: {e}")
                 result["errors"].append(str(e))
+
+        # Ejecutar actualizaciones en lotes
+        batch_size = 100
+
+        if rows_to_update:
+            logger.info(f"Actualizando {len(rows_to_update)} productos existentes...")
+            for i in range(0, len(rows_to_update), batch_size):
+                batch = rows_to_update[i:i + batch_size]
+                try:
+                    ss_service.client.Sheets.update_rows(sheet_id, batch)
+                    result["updated"] += len(batch)
+                except Exception as e:
+                    logger.error(f"Error actualizando lote: {e}")
+                    result["errors"].append(f"Error update batch: {e}")
+
+        if rows_to_add:
+            logger.info(f"Insertando {len(rows_to_add)} productos nuevos...")
+            for i in range(0, len(rows_to_add), batch_size):
+                batch = rows_to_add[i:i + batch_size]
+                try:
+                    ss_service.client.Sheets.add_rows(sheet_id, batch)
+                    result["inserted"] += len(batch)
+                except Exception as e:
+                    logger.error(f"Error insertando lote: {e}")
+                    result["errors"].append(f"Error insert batch: {e}")
 
         result["success"] = True
         logger.info(
-            f"Sincronización completada. Sincronizados: {result['items_synced']}, "
-            f"Actualizados: {result['items_updated']}, Nuevos: {result['items_added']}"
+            f"Sincronización completada. Total: {result['total_in_bind']}, "
+            f"Actualizados: {result['updated']}, Insertados: {result['inserted']}"
         )
 
     except BindAPIError as e:
