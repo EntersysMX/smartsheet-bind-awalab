@@ -325,19 +325,44 @@ class BindClient:
         """Obtiene una factura por su ID."""
         return self._request("GET", f"/Invoices/{invoice_id}")
 
-    def get_invoices(self, created_since: datetime = None) -> list[dict]:
+    def get_invoices(
+        self,
+        created_since: datetime = None,
+        limit: int = None,
+        skip: int = 0,
+        order_by: str = "Date desc",
+    ) -> list[dict]:
         """
         Obtiene lista de facturas.
 
         Args:
             created_since: Solo facturas creadas después de esta fecha
+            limit: Número máximo de facturas a obtener
+            skip: Número de registros a saltar (para paginación manual)
+            order_by: Campo de ordenamiento (default: Date desc)
+
+        Returns:
+            Lista de facturas
         """
-        params = {}
+        params = {"$orderby": order_by}
+
         if created_since:
             date_str = created_since.strftime("%Y-%m-%dT%H:%M:%S")
-            params["$filter"] = f"CreationDate gt DateTime'{date_str}'"
+            params["$filter"] = f"Date gt DateTime'{date_str}'"
 
-        return self._paginated_get("/Invoices", params=params)
+        if limit:
+            params["$top"] = limit
+        if skip:
+            params["$skip"] = skip
+
+        response = self._request("GET", "/Invoices", params=params)
+
+        # Manejar formato de respuesta
+        if isinstance(response, list):
+            return response
+        elif "value" in response:
+            return response["value"]
+        return []
 
     # ========== MÉTODOS DE PRODUCTOS ==========
 
