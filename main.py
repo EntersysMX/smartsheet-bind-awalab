@@ -456,6 +456,86 @@ async def list_scheduler_jobs():
 job_history: list[dict] = []
 MAX_HISTORY = 100
 
+# Metadatos de jobs (descripciones, configuración, última ejecución)
+JOB_METADATA = {
+    "sync_invoices": {
+        "name": "Sincronización de Facturas",
+        "description": "Sincroniza facturas de Bind ERP a Smartsheet",
+        "details": """
+<h4 class="font-semibold mb-2">¿Qué hace este proceso?</h4>
+<p class="text-gray-300 mb-4">Obtiene las facturas emitidas en Bind ERP y las registra en la hoja de Smartsheet configurada.</p>
+
+<h4 class="font-semibold mb-2">Flujo de sincronización:</h4>
+<ol class="list-decimal list-inside text-gray-300 mb-4 space-y-1">
+    <li>Consulta las últimas 500 facturas de Bind ERP (ordenadas por fecha)</li>
+    <li>Obtiene los UUIDs ya existentes en Smartsheet</li>
+    <li>Filtra solo las facturas nuevas (evita duplicados)</li>
+    <li>Agrega las facturas nuevas a Smartsheet</li>
+</ol>
+
+<h4 class="font-semibold mb-2">Campos sincronizados:</h4>
+<div class="grid grid-cols-2 gap-2 text-sm text-gray-300 mb-4">
+    <span>• UUID</span><span>• Serie</span>
+    <span>• Folio</span><span>• Fecha</span>
+    <span>• Cliente</span><span>• RFC</span>
+    <span>• Subtotal</span><span>• IVA</span>
+    <span>• Total</span><span>• Moneda</span>
+    <span>• Uso CFDI</span><span>• Método Pago</span>
+    <span>• Estatus</span><span>• Comentarios</span>
+</div>
+
+<h4 class="font-semibold mb-2">Configuración:</h4>
+<ul class="text-gray-300 text-sm space-y-1">
+    <li>• <strong>Hoja destino:</strong> SMARTSHEET_INVOICES_SHEET_ID</li>
+    <li>• <strong>API Bind:</strong> GET /Invoices con paginación OData</li>
+    <li>• <strong>Detección duplicados:</strong> Por UUID de factura</li>
+</ul>
+""",
+        "source": "Bind ERP → Smartsheet",
+        "endpoint": "/Invoices",
+        "sheet_var": "SMARTSHEET_INVOICES_SHEET_ID",
+    },
+    "sync_inventory": {
+        "name": "Sincronización de Inventario",
+        "description": "Sincroniza existencias de productos de Bind ERP a Smartsheet",
+        "details": """
+<h4 class="font-semibold mb-2">¿Qué hace este proceso?</h4>
+<p class="text-gray-300 mb-4">Obtiene las existencias actuales del almacén configurado en Bind ERP y actualiza la hoja de inventario en Smartsheet.</p>
+
+<h4 class="font-semibold mb-2">Flujo de sincronización:</h4>
+<ol class="list-decimal list-inside text-gray-300 mb-4 space-y-1">
+    <li>Consulta el inventario del almacén en Bind ERP</li>
+    <li>Obtiene los productos existentes en Smartsheet</li>
+    <li>Actualiza existencias de productos ya registrados</li>
+    <li>Identifica productos nuevos (pendiente: agregar automáticamente)</li>
+</ol>
+
+<h4 class="font-semibold mb-2">Campos sincronizados:</h4>
+<div class="grid grid-cols-2 gap-2 text-sm text-gray-300 mb-4">
+    <span>• Código</span><span>• Nombre</span>
+    <span>• Existencia</span><span>• Almacén</span>
+    <span>• Última Actualización</span><span></span>
+</div>
+
+<h4 class="font-semibold mb-2">Configuración:</h4>
+<ul class="text-gray-300 text-sm space-y-1">
+    <li>• <strong>Hoja destino:</strong> SMARTSHEET_INVENTORY_SHEET_ID</li>
+    <li>• <strong>Almacén:</strong> BIND_WAREHOUSE_ID</li>
+    <li>• <strong>API Bind:</strong> GET /Inventory con filtro por almacén</li>
+</ul>
+
+<h4 class="font-semibold mt-4 mb-2 text-yellow-400">⚠️ Estado actual:</h4>
+<p class="text-yellow-300 text-sm">Este proceso está configurado pero la hoja de inventario no está definida (SMARTSHEET_INVENTORY_SHEET_ID=0). Configure el ID de la hoja para activarlo.</p>
+""",
+        "source": "Bind ERP → Smartsheet",
+        "endpoint": "/Inventory",
+        "sheet_var": "SMARTSHEET_INVENTORY_SHEET_ID",
+    },
+}
+
+# Última ejecución de cada job
+job_last_run: dict[str, dict] = {}
+
 
 def add_to_history(job_id: str, job_name: str, status: str, details: dict = None):
     """Agrega una entrada al historial de ejecuciones."""
@@ -483,12 +563,19 @@ async def admin_list_jobs():
             trigger_info["interval_seconds"] = job.trigger.interval.total_seconds()
             trigger_info["interval_minutes"] = job.trigger.interval.total_seconds() / 60
 
+        # Obtener metadatos del job
+        metadata = JOB_METADATA.get(job.id, {})
+        last_run = job_last_run.get(job.id, {})
+
         jobs.append({
             "id": job.id,
             "name": job.name,
+            "description": metadata.get("description", ""),
+            "source": metadata.get("source", ""),
             "next_run": job.next_run_time.isoformat() if job.next_run_time else None,
             "trigger": trigger_info,
             "pending": job.pending,
+            "last_run": last_run,
         })
 
     return {
@@ -496,6 +583,46 @@ async def admin_list_jobs():
         "timestamp": datetime.now().isoformat(),
         "scheduler_running": scheduler.running,
         "jobs": jobs,
+    }
+
+
+@app.get("/api/admin/jobs/{job_id}/details")
+async def admin_get_job_details(job_id: str):
+    """Obtiene los detalles completos de un job."""
+    job = scheduler.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail=f"Job '{job_id}' no encontrado")
+
+    metadata = JOB_METADATA.get(job_id, {})
+    last_run = job_last_run.get(job_id, {})
+
+    # Obtener historial reciente de este job
+    recent_history = [h for h in job_history if h["job_id"] == job_id][:10]
+
+    # Información del trigger
+    trigger_info = {}
+    if hasattr(job.trigger, 'interval'):
+        trigger_info["type"] = "interval"
+        trigger_info["interval_seconds"] = job.trigger.interval.total_seconds()
+        trigger_info["interval_minutes"] = job.trigger.interval.total_seconds() / 60
+
+    return {
+        "success": True,
+        "job": {
+            "id": job.id,
+            "name": job.name,
+            "description": metadata.get("description", "Sin descripción"),
+            "details_html": metadata.get("details", "<p>Sin detalles disponibles</p>"),
+            "source": metadata.get("source", ""),
+            "endpoint": metadata.get("endpoint", ""),
+            "sheet_var": metadata.get("sheet_var", ""),
+            "next_run": job.next_run_time.isoformat() if job.next_run_time else None,
+            "trigger": trigger_info,
+            "pending": job.pending,
+            "paused": job.next_run_time is None,
+        },
+        "last_run": last_run,
+        "recent_history": recent_history,
     }
 
 
@@ -789,6 +916,68 @@ def get_embedded_dashboard() -> str:
                 </div>
             </div>
         </div>
+
+        <!-- Details Modal -->
+        <div id="details-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 overflow-y-auto">
+            <div class="bg-gray-800 rounded-xl w-full max-w-2xl mx-4 my-8 border border-gray-700">
+                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
+                    <div>
+                        <h3 id="details-title" class="text-lg font-semibold">Detalles del Proceso</h3>
+                        <p id="details-subtitle" class="text-sm text-gray-400"></p>
+                    </div>
+                    <button onclick="closeDetailsModal()" class="text-gray-400 hover:text-white transition">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6">
+                    <!-- Status Badge -->
+                    <div class="flex items-center space-x-4 mb-6">
+                        <span id="details-status" class="px-3 py-1 rounded-full text-sm font-medium"></span>
+                        <span id="details-source" class="text-sm text-gray-400"></span>
+                    </div>
+
+                    <!-- Info Grid -->
+                    <div class="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-700/30 rounded-lg">
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase">Intervalo</p>
+                            <p id="details-interval" class="font-semibold"></p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase">Próxima Ejecución</p>
+                            <p id="details-next-run" class="font-semibold"></p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase">Endpoint API</p>
+                            <p id="details-endpoint" class="font-mono text-sm text-blue-400"></p>
+                        </div>
+                        <div>
+                            <p class="text-xs text-gray-400 uppercase">Variable Config</p>
+                            <p id="details-sheet-var" class="font-mono text-sm text-purple-400"></p>
+                        </div>
+                    </div>
+
+                    <!-- Details Content -->
+                    <div id="details-content" class="prose prose-invert max-w-none">
+                        <p class="text-gray-400">Cargando detalles...</p>
+                    </div>
+
+                    <!-- Recent History -->
+                    <div class="mt-6 pt-6 border-t border-gray-700">
+                        <h4 class="font-semibold mb-3">Historial Reciente</h4>
+                        <div id="details-history" class="space-y-2 max-h-40 overflow-y-auto">
+                            <p class="text-gray-400 text-sm">Sin historial</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="px-6 py-4 border-t border-gray-700 flex justify-end">
+                    <button onclick="closeDetailsModal()" class="bg-gray-700 hover:bg-gray-600 px-6 py-2 rounded-lg transition">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
     </main>
 
     <script>
@@ -860,15 +1049,16 @@ def get_embedded_dashboard() -> str:
 
                     return `
                         <div class="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
-                            <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center justify-between mb-2">
                                 <div>
                                     <h3 class="font-semibold">${job.name}</h3>
-                                    <p class="text-sm text-gray-400">ID: ${job.id}</p>
+                                    <p class="text-xs text-gray-400">${job.description || 'ID: ' + job.id}</p>
                                 </div>
                                 <span class="px-3 py-1 rounded-full text-xs font-medium ${isPaused ? 'bg-yellow-600/20 text-yellow-400' : 'bg-green-600/20 text-green-400'}">
                                     ${isPaused ? 'Pausado' : 'Activo'}
                                 </span>
                             </div>
+                            ${job.source ? `<p class="text-xs text-blue-400 mb-3">${job.source}</p>` : ''}
                             <div class="grid grid-cols-2 gap-4 text-sm mb-4">
                                 <div>
                                     <p class="text-gray-400">Intervalo</p>
@@ -880,26 +1070,37 @@ def get_embedded_dashboard() -> str:
                                 </div>
                             </div>
                             <div class="flex space-x-2">
+                                <button onclick="openDetailsModal('${job.id}')"
+                                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded-lg text-sm transition flex items-center justify-center space-x-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                    </svg>
+                                    <span>Detalles</span>
+                                </button>
                                 <button onclick="runJob('${job.id}')"
                                         class="flex-1 bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg text-sm transition">
-                                    Ejecutar ahora
+                                    Ejecutar
                                 </button>
                                 ${isPaused ? `
                                     <button onclick="resumeJob('${job.id}')"
-                                            class="flex-1 bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg text-sm transition">
-                                        Reanudar
+                                            class="bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg text-sm transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
                                     </button>
                                 ` : `
                                     <button onclick="pauseJob('${job.id}')"
-                                            class="flex-1 bg-yellow-600 hover:bg-yellow-700 px-3 py-2 rounded-lg text-sm transition">
-                                        Pausar
+                                            class="bg-yellow-600 hover:bg-yellow-700 px-3 py-2 rounded-lg text-sm transition">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                        </svg>
                                     </button>
                                 `}
                                 <button onclick="openIntervalModal('${job.id}', '${job.name}', ${intervalMin})"
                                         class="bg-gray-600 hover:bg-gray-500 px-3 py-2 rounded-lg text-sm transition">
                                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                 </button>
                             </div>
@@ -1033,6 +1234,93 @@ def get_embedded_dashboard() -> str:
             } catch (e) {
                 showNotification('Error al actualizar intervalo', 'error');
             }
+        }
+
+        // Modal de detalles
+        async function openDetailsModal(jobId) {
+            const modal = document.getElementById('details-modal');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            // Mostrar loading
+            document.getElementById('details-content').innerHTML = '<p class="text-gray-400">Cargando detalles...</p>';
+
+            try {
+                const res = await fetch(`/api/admin/jobs/${jobId}/details`);
+                const data = await res.json();
+
+                if (data.success) {
+                    const job = data.job;
+
+                    // Actualizar título
+                    document.getElementById('details-title').textContent = job.name;
+                    document.getElementById('details-subtitle').textContent = job.description;
+
+                    // Status badge
+                    const statusEl = document.getElementById('details-status');
+                    if (job.paused) {
+                        statusEl.textContent = 'Pausado';
+                        statusEl.className = 'px-3 py-1 rounded-full text-sm font-medium bg-yellow-600/20 text-yellow-400';
+                    } else {
+                        statusEl.textContent = 'Activo';
+                        statusEl.className = 'px-3 py-1 rounded-full text-sm font-medium bg-green-600/20 text-green-400';
+                    }
+
+                    // Source
+                    document.getElementById('details-source').textContent = job.source || '';
+
+                    // Info grid
+                    const intervalMin = job.trigger.interval_minutes ? Math.round(job.trigger.interval_minutes) : '-';
+                    document.getElementById('details-interval').textContent = intervalMin + ' minutos';
+                    document.getElementById('details-next-run').textContent = formatDate(job.next_run);
+                    document.getElementById('details-endpoint').textContent = job.endpoint || '-';
+                    document.getElementById('details-sheet-var').textContent = job.sheet_var || '-';
+
+                    // Details HTML
+                    document.getElementById('details-content').innerHTML = job.details_html;
+
+                    // Recent history
+                    const historyEl = document.getElementById('details-history');
+                    if (data.recent_history && data.recent_history.length > 0) {
+                        const statusColors = {
+                            'completed': 'bg-green-600/20 text-green-400',
+                            'manual_run': 'bg-blue-600/20 text-blue-400',
+                            'paused': 'bg-yellow-600/20 text-yellow-400',
+                            'resumed': 'bg-green-600/20 text-green-400',
+                            'interval_changed': 'bg-purple-600/20 text-purple-400',
+                            'failed': 'bg-red-600/20 text-red-400',
+                        };
+                        const statusLabels = {
+                            'completed': 'Completado',
+                            'manual_run': 'Ejecutado',
+                            'paused': 'Pausado',
+                            'resumed': 'Reanudado',
+                            'interval_changed': 'Intervalo cambiado',
+                            'failed': 'Fallido',
+                        };
+
+                        historyEl.innerHTML = data.recent_history.map(entry => `
+                            <div class="flex items-center justify-between text-sm py-1">
+                                <span class="text-gray-400">${formatDate(entry.timestamp)}</span>
+                                <span class="px-2 py-0.5 rounded text-xs ${statusColors[entry.status] || 'bg-gray-600 text-gray-300'}">
+                                    ${statusLabels[entry.status] || entry.status}
+                                </span>
+                            </div>
+                        `).join('');
+                    } else {
+                        historyEl.innerHTML = '<p class="text-gray-400 text-sm">Sin historial de ejecuciones</p>';
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading job details:', e);
+                document.getElementById('details-content').innerHTML = '<p class="text-red-400">Error cargando detalles</p>';
+            }
+        }
+
+        function closeDetailsModal() {
+            const modal = document.getElementById('details-modal');
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
         }
 
         // Notificaciones
