@@ -794,80 +794,80 @@ def get_embedded_dashboard() -> str:
 </head>
 <body class="bg-gray-900 text-gray-100 min-h-screen">
     <!-- Header -->
-    <header class="bg-gray-800 border-b border-gray-700 px-6 py-4">
-        <div class="flex items-center justify-between max-w-7xl mx-auto">
+    <header class="bg-gray-800 border-b border-gray-700 px-4 sm:px-6 py-3 sm:py-4">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between max-w-7xl mx-auto gap-3 sm:gap-0">
             <div class="flex items-center space-x-3">
-                <div class="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <div class="w-8 h-8 sm:w-10 sm:h-10 bg-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
                     </svg>
                 </div>
                 <div>
-                    <h1 class="text-xl font-bold">Smartsheet-Bind ERP</h1>
-                    <p class="text-sm text-gray-400">Panel de Administración</p>
+                    <h1 class="text-lg sm:text-xl font-bold">Smartsheet-Bind ERP</h1>
+                    <p class="text-xs sm:text-sm text-gray-400">Panel de Administración</p>
                 </div>
             </div>
-            <div class="flex items-center space-x-4">
+            <div class="flex items-center justify-between sm:justify-end space-x-3 sm:space-x-4">
                 <div id="connection-status" class="flex items-center space-x-2">
-                    <span class="text-sm text-gray-400">Cargando...</span>
+                    <span class="text-xs sm:text-sm text-gray-400">Cargando...</span>
                 </div>
-                <button onclick="refreshAll()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition">
+                <button onclick="refreshAll()" class="bg-blue-600 hover:bg-blue-700 px-3 sm:px-4 py-2 rounded-lg text-xs sm:text-sm font-medium transition">
                     Actualizar
                 </button>
             </div>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-6 py-8">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 py-4 sm:py-8">
         <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-6 mb-6 sm:mb-8">
+            <div class="bg-gray-800 rounded-xl p-3 sm:p-6 border border-gray-700">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-sm text-gray-400">Jobs Activos</p>
-                        <p id="stat-jobs" class="text-3xl font-bold mt-1">-</p>
+                        <p class="text-xs sm:text-sm text-gray-400">Jobs Activos</p>
+                        <p id="stat-jobs" class="text-xl sm:text-3xl font-bold mt-1">-</p>
                     </div>
-                    <div class="w-12 h-12 bg-blue-600/20 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-8 h-8 sm:w-12 sm:h-12 bg-blue-600/20 rounded-lg flex items-center justify-center">
+                        <svg class="w-4 h-4 sm:w-6 sm:h-6 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
                 </div>
             </div>
-            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div class="bg-gray-800 rounded-xl p-3 sm:p-6 border border-gray-700">
                 <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-400">Bind ERP</p>
-                        <p id="stat-bind" class="text-3xl font-bold mt-1">-</p>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs sm:text-sm text-gray-400">Bind ERP</p>
+                        <p id="stat-bind" class="text-sm sm:text-xl font-bold mt-1 truncate">-</p>
                     </div>
-                    <div id="bind-icon" class="w-12 h-12 bg-gray-600/20 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div id="bind-icon" class="w-8 h-8 sm:w-12 sm:h-12 bg-gray-600/20 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
+                        <svg class="w-4 h-4 sm:w-6 sm:h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 12h14M12 5l7 7-7 7"></path>
                         </svg>
                     </div>
                 </div>
             </div>
-            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div class="bg-gray-800 rounded-xl p-3 sm:p-6 border border-gray-700">
                 <div class="flex items-center justify-between">
-                    <div>
-                        <p class="text-sm text-gray-400">Smartsheet</p>
-                        <p id="stat-smartsheet" class="text-3xl font-bold mt-1">-</p>
+                    <div class="min-w-0 flex-1">
+                        <p class="text-xs sm:text-sm text-gray-400">Smartsheet</p>
+                        <p id="stat-smartsheet" class="text-sm sm:text-xl font-bold mt-1 truncate">-</p>
                     </div>
-                    <div id="smartsheet-icon" class="w-12 h-12 bg-gray-600/20 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div id="smartsheet-icon" class="w-8 h-8 sm:w-12 sm:h-12 bg-gray-600/20 rounded-lg flex items-center justify-center flex-shrink-0 ml-2">
+                        <svg class="w-4 h-4 sm:w-6 sm:h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2"></path>
                         </svg>
                     </div>
                 </div>
             </div>
-            <div class="bg-gray-800 rounded-xl p-6 border border-gray-700">
+            <div class="bg-gray-800 rounded-xl p-3 sm:p-6 border border-gray-700">
                 <div class="flex items-center justify-between">
                     <div>
-                        <p class="text-sm text-gray-400">Ejecuciones</p>
-                        <p id="stat-executions" class="text-3xl font-bold mt-1">-</p>
+                        <p class="text-xs sm:text-sm text-gray-400">Ejecuciones</p>
+                        <p id="stat-executions" class="text-xl sm:text-3xl font-bold mt-1">-</p>
                     </div>
-                    <div class="w-12 h-12 bg-green-600/20 rounded-lg flex items-center justify-center">
-                        <svg class="w-6 h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <div class="w-8 h-8 sm:w-12 sm:h-12 bg-green-600/20 rounded-lg flex items-center justify-center">
+                        <svg class="w-4 h-4 sm:w-6 sm:h-6 text-green-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                         </svg>
                     </div>
@@ -876,41 +876,41 @@ def get_embedded_dashboard() -> str:
         </div>
 
         <!-- Jobs Section -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8">
             <div class="bg-gray-800 rounded-xl border border-gray-700">
-                <div class="px-6 py-4 border-b border-gray-700">
-                    <h2 class="text-lg font-semibold">Procesos Programados</h2>
+                <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-700">
+                    <h2 class="text-base sm:text-lg font-semibold">Procesos Programados</h2>
                 </div>
-                <div id="jobs-container" class="p-6 space-y-4">
-                    <p class="text-gray-400">Cargando jobs...</p>
+                <div id="jobs-container" class="p-3 sm:p-6 space-y-3 sm:space-y-4">
+                    <p class="text-gray-400 text-sm">Cargando jobs...</p>
                 </div>
             </div>
 
             <div class="bg-gray-800 rounded-xl border border-gray-700">
-                <div class="px-6 py-4 border-b border-gray-700">
-                    <h2 class="text-lg font-semibold">Historial de Ejecuciones</h2>
+                <div class="px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-700">
+                    <h2 class="text-base sm:text-lg font-semibold">Historial de Ejecuciones</h2>
                 </div>
-                <div id="history-container" class="p-6 max-h-96 overflow-y-auto">
-                    <p class="text-gray-400">Cargando historial...</p>
+                <div id="history-container" class="p-3 sm:p-6 max-h-80 sm:max-h-96 overflow-y-auto">
+                    <p class="text-gray-400 text-sm">Cargando historial...</p>
                 </div>
             </div>
         </div>
 
         <!-- Interval Modal -->
-        <div id="interval-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50">
-            <div class="bg-gray-800 rounded-xl p-6 w-full max-w-md mx-4 border border-gray-700">
-                <h3 class="text-lg font-semibold mb-4">Cambiar Intervalo</h3>
-                <p id="modal-job-name" class="text-gray-400 mb-4"></p>
+        <div id="interval-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 p-4">
+            <div class="bg-gray-800 rounded-xl p-4 sm:p-6 w-full max-w-md mx-auto border border-gray-700">
+                <h3 class="text-base sm:text-lg font-semibold mb-3 sm:mb-4">Cambiar Intervalo</h3>
+                <p id="modal-job-name" class="text-sm text-gray-400 mb-3 sm:mb-4"></p>
                 <div class="mb-4">
-                    <label class="block text-sm text-gray-400 mb-2">Intervalo (minutos)</label>
+                    <label class="block text-xs sm:text-sm text-gray-400 mb-2">Intervalo (minutos)</label>
                     <input type="number" id="interval-input" min="1" max="1440"
-                           class="w-full bg-gray-700 border border-gray-600 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-blue-500">
+                           class="w-full bg-gray-700 border border-gray-600 rounded-lg px-3 sm:px-4 py-2 text-white text-sm sm:text-base focus:outline-none focus:border-blue-500">
                 </div>
                 <div class="flex space-x-3">
-                    <button onclick="closeModal()" class="flex-1 bg-gray-700 hover:bg-gray-600 px-4 py-2 rounded-lg transition">
+                    <button onclick="closeModal()" class="flex-1 bg-gray-700 hover:bg-gray-600 px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base">
                         Cancelar
                     </button>
-                    <button onclick="saveInterval()" class="flex-1 bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition">
+                    <button onclick="saveInterval()" class="flex-1 bg-blue-600 hover:bg-blue-700 px-3 sm:px-4 py-2 rounded-lg transition text-sm sm:text-base">
                         Guardar
                     </button>
                 </div>
@@ -918,61 +918,61 @@ def get_embedded_dashboard() -> str:
         </div>
 
         <!-- Details Modal -->
-        <div id="details-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 overflow-y-auto">
-            <div class="bg-gray-800 rounded-xl w-full max-w-2xl mx-4 my-8 border border-gray-700">
-                <div class="flex items-center justify-between px-6 py-4 border-b border-gray-700">
-                    <div>
-                        <h3 id="details-title" class="text-lg font-semibold">Detalles del Proceso</h3>
-                        <p id="details-subtitle" class="text-sm text-gray-400"></p>
+        <div id="details-modal" class="fixed inset-0 bg-black/50 hidden items-center justify-center z-50 overflow-y-auto p-2 sm:p-4">
+            <div class="bg-gray-800 rounded-xl w-full max-w-2xl mx-auto my-4 sm:my-8 border border-gray-700">
+                <div class="flex items-center justify-between px-4 sm:px-6 py-3 sm:py-4 border-b border-gray-700">
+                    <div class="min-w-0 flex-1 pr-4">
+                        <h3 id="details-title" class="text-base sm:text-lg font-semibold truncate">Detalles del Proceso</h3>
+                        <p id="details-subtitle" class="text-xs sm:text-sm text-gray-400 truncate"></p>
                     </div>
-                    <button onclick="closeDetailsModal()" class="text-gray-400 hover:text-white transition">
-                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <button onclick="closeDetailsModal()" class="text-gray-400 hover:text-white transition flex-shrink-0">
+                        <svg class="w-5 h-5 sm:w-6 sm:h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                         </svg>
                     </button>
                 </div>
-                <div class="p-6">
+                <div class="p-4 sm:p-6">
                     <!-- Status Badge -->
-                    <div class="flex items-center space-x-4 mb-6">
-                        <span id="details-status" class="px-3 py-1 rounded-full text-sm font-medium"></span>
-                        <span id="details-source" class="text-sm text-gray-400"></span>
+                    <div class="flex flex-wrap items-center gap-2 sm:gap-4 mb-4 sm:mb-6">
+                        <span id="details-status" class="px-2 sm:px-3 py-1 rounded-full text-xs sm:text-sm font-medium"></span>
+                        <span id="details-source" class="text-xs sm:text-sm text-gray-400"></span>
                     </div>
 
                     <!-- Info Grid -->
-                    <div class="grid grid-cols-2 gap-4 mb-6 p-4 bg-gray-700/30 rounded-lg">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-4 sm:mb-6 p-3 sm:p-4 bg-gray-700/30 rounded-lg">
                         <div>
                             <p class="text-xs text-gray-400 uppercase">Intervalo</p>
-                            <p id="details-interval" class="font-semibold"></p>
+                            <p id="details-interval" class="font-semibold text-sm sm:text-base"></p>
                         </div>
                         <div>
                             <p class="text-xs text-gray-400 uppercase">Próxima Ejecución</p>
-                            <p id="details-next-run" class="font-semibold"></p>
+                            <p id="details-next-run" class="font-semibold text-sm sm:text-base"></p>
                         </div>
                         <div>
                             <p class="text-xs text-gray-400 uppercase">Endpoint API</p>
-                            <p id="details-endpoint" class="font-mono text-sm text-blue-400"></p>
+                            <p id="details-endpoint" class="font-mono text-xs sm:text-sm text-blue-400 break-all"></p>
                         </div>
                         <div>
                             <p class="text-xs text-gray-400 uppercase">Variable Config</p>
-                            <p id="details-sheet-var" class="font-mono text-sm text-purple-400"></p>
+                            <p id="details-sheet-var" class="font-mono text-xs sm:text-sm text-purple-400 break-all"></p>
                         </div>
                     </div>
 
                     <!-- Details Content -->
-                    <div id="details-content" class="prose prose-invert max-w-none">
+                    <div id="details-content" class="prose prose-invert prose-sm sm:prose max-w-none text-sm sm:text-base">
                         <p class="text-gray-400">Cargando detalles...</p>
                     </div>
 
                     <!-- Recent History -->
-                    <div class="mt-6 pt-6 border-t border-gray-700">
-                        <h4 class="font-semibold mb-3">Historial Reciente</h4>
-                        <div id="details-history" class="space-y-2 max-h-40 overflow-y-auto">
-                            <p class="text-gray-400 text-sm">Sin historial</p>
+                    <div class="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t border-gray-700">
+                        <h4 class="font-semibold text-sm sm:text-base mb-2 sm:mb-3">Historial Reciente</h4>
+                        <div id="details-history" class="space-y-2 max-h-32 sm:max-h-40 overflow-y-auto">
+                            <p class="text-gray-400 text-xs sm:text-sm">Sin historial</p>
                         </div>
                     </div>
                 </div>
-                <div class="px-6 py-4 border-t border-gray-700 flex justify-end">
-                    <button onclick="closeDetailsModal()" class="bg-gray-700 hover:bg-gray-600 px-6 py-2 rounded-lg transition">
+                <div class="px-4 sm:px-6 py-3 sm:py-4 border-t border-gray-700 flex justify-end">
+                    <button onclick="closeDetailsModal()" class="bg-gray-700 hover:bg-gray-600 px-4 sm:px-6 py-2 rounded-lg transition text-sm sm:text-base">
                         Cerrar
                     </button>
                 </div>
@@ -1048,60 +1048,63 @@ def get_embedded_dashboard() -> str:
                     const intervalMin = job.trigger.interval_minutes ? Math.round(job.trigger.interval_minutes) : '-';
 
                     return `
-                        <div class="bg-gray-700/50 rounded-lg p-4 border border-gray-600">
-                            <div class="flex items-center justify-between mb-2">
-                                <div>
-                                    <h3 class="font-semibold">${job.name}</h3>
-                                    <p class="text-xs text-gray-400">${job.description || 'ID: ' + job.id}</p>
+                        <div class="bg-gray-700/50 rounded-lg p-3 sm:p-4 border border-gray-600">
+                            <div class="flex items-start justify-between mb-2 gap-2">
+                                <div class="min-w-0 flex-1">
+                                    <h3 class="font-semibold text-sm sm:text-base truncate">${job.name}</h3>
+                                    <p class="text-xs text-gray-400 truncate">${job.description || 'ID: ' + job.id}</p>
                                 </div>
-                                <span class="px-3 py-1 rounded-full text-xs font-medium ${isPaused ? 'bg-yellow-600/20 text-yellow-400' : 'bg-green-600/20 text-green-400'}">
+                                <span class="px-2 sm:px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${isPaused ? 'bg-yellow-600/20 text-yellow-400' : 'bg-green-600/20 text-green-400'}">
                                     ${isPaused ? 'Pausado' : 'Activo'}
                                 </span>
                             </div>
-                            ${job.source ? `<p class="text-xs text-blue-400 mb-3">${job.source}</p>` : ''}
-                            <div class="grid grid-cols-2 gap-4 text-sm mb-4">
+                            ${job.source ? `<p class="text-xs text-blue-400 mb-2 sm:mb-3 truncate">${job.source}</p>` : ''}
+                            <div class="grid grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm mb-3 sm:mb-4">
                                 <div>
                                     <p class="text-gray-400">Intervalo</p>
                                     <p class="font-medium">${intervalMin} min</p>
                                 </div>
                                 <div>
                                     <p class="text-gray-400">Próxima ejecución</p>
-                                    <p class="font-medium">${formatDate(job.next_run)}</p>
+                                    <p class="font-medium text-xs sm:text-sm">${formatDate(job.next_run)}</p>
                                 </div>
                             </div>
-                            <div class="flex space-x-2">
+                            <div class="grid grid-cols-2 sm:flex gap-2 sm:space-x-2 sm:gap-0">
                                 <button onclick="openDetailsModal('${job.id}')"
-                                        class="flex-1 bg-indigo-600 hover:bg-indigo-700 px-3 py-2 rounded-lg text-sm transition flex items-center justify-center space-x-1">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        class="bg-indigo-600 hover:bg-indigo-700 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm transition flex items-center justify-center space-x-1 sm:flex-1">
+                                    <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
                                     <span>Detalles</span>
                                 </button>
                                 <button onclick="runJob('${job.id}')"
-                                        class="flex-1 bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-lg text-sm transition">
+                                        class="bg-blue-600 hover:bg-blue-700 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm transition sm:flex-1">
                                     Ejecutar
                                 </button>
                                 ${isPaused ? `
                                     <button onclick="resumeJob('${job.id}')"
-                                            class="bg-green-600 hover:bg-green-700 px-3 py-2 rounded-lg text-sm transition">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            class="bg-green-600 hover:bg-green-700 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm transition flex items-center justify-center">
+                                        <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
+                                        <span class="ml-1 sm:hidden">Reanudar</span>
                                     </button>
                                 ` : `
                                     <button onclick="pauseJob('${job.id}')"
-                                            class="bg-yellow-600 hover:bg-yellow-700 px-3 py-2 rounded-lg text-sm transition">
-                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            class="bg-yellow-600 hover:bg-yellow-700 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm transition flex items-center justify-center">
+                                        <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
+                                        <span class="ml-1 sm:hidden">Pausar</span>
                                     </button>
                                 `}
                                 <button onclick="openIntervalModal('${job.id}', '${job.name}', ${intervalMin})"
-                                        class="bg-gray-600 hover:bg-gray-500 px-3 py-2 rounded-lg text-sm transition">
-                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        class="bg-gray-600 hover:bg-gray-500 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm transition flex items-center justify-center">
+                                    <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                     </svg>
+                                    <span class="ml-1 sm:hidden">Tiempo</span>
                                 </button>
                             </div>
                         </div>
@@ -1145,12 +1148,12 @@ def get_embedded_dashboard() -> str:
                     };
 
                     return `
-                        <div class="flex items-center justify-between py-2 border-b border-gray-700 last:border-0">
-                            <div>
-                                <p class="text-sm font-medium">${entry.job_name}</p>
+                        <div class="flex items-center justify-between py-2 border-b border-gray-700 last:border-0 gap-2">
+                            <div class="min-w-0 flex-1">
+                                <p class="text-xs sm:text-sm font-medium truncate">${entry.job_name}</p>
                                 <p class="text-xs text-gray-400">${formatDate(entry.timestamp)}</p>
                             </div>
-                            <span class="px-2 py-1 rounded text-xs ${statusColors[entry.status] || 'bg-gray-600 text-gray-300'}">
+                            <span class="px-2 py-1 rounded text-xs flex-shrink-0 ${statusColors[entry.status] || 'bg-gray-600 text-gray-300'}">
                                 ${statusLabels[entry.status] || entry.status}
                             </span>
                         </div>
