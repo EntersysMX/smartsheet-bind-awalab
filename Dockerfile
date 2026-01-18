@@ -40,10 +40,11 @@ COPY config.py .
 COPY bind_client.py .
 COPY smartsheet_service.py .
 COPY business_logic.py .
+COPY database.py .
 COPY main.py .
 
-# Crear directorio para logs y dar permisos
-RUN mkdir -p /app/logs && chown -R appuser:appgroup /app
+# Crear directorios para logs y datos, y dar permisos
+RUN mkdir -p /app/logs /app/data && chown -R appuser:appgroup /app
 
 # Cambiar a usuario no-root
 USER appuser

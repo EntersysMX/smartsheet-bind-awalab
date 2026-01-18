@@ -21,5 +21,8 @@ APScheduler>=3.10.0
 # Variables de entorno
 python-dotenv>=1.0.0
 
+# Base de datos
+SQLAlchemy>=2.0.0
+
 # Logging y utilidades
 python-json-logger>=2.0.0
