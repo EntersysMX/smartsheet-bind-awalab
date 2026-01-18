@@ -48,6 +48,25 @@ logger = logging.getLogger(__name__)
 
 scheduler = AsyncIOScheduler()
 
+# ========== HISTORIAL DE EJECUCIONES (debe estar antes de las funciones que lo usan) ==========
+
+job_history: list[dict] = []
+MAX_HISTORY = 100
+
+
+def add_to_history(job_id: str, job_name: str, status: str, details: dict = None):
+    """Agrega una entrada al historial de ejecuciones."""
+    entry = {
+        "timestamp": datetime.now().isoformat(),
+        "job_id": job_id,
+        "job_name": job_name,
+        "status": status,
+        "details": details or {},
+    }
+    job_history.insert(0, entry)
+    if len(job_history) > MAX_HISTORY:
+        job_history.pop()
+
 
 # ========== LIFECYCLE MANAGEMENT ==========
 
@@ -189,12 +208,12 @@ async def run_inventory_sync():
         result = await loop.run_in_executor(None, sync_inventory)
         logger.info(f"Sincronización completada: {result}")
         # Registrar en historial
-        _add_job_history("sync_inventory", "Sincronización de Inventario",
-                        "completed" if result.get("success") else "failed", result)
+        add_to_history("sync_inventory", "Sincronización de Inventario",
+                      "completed" if result.get("success") else "failed", result)
         return result
     except Exception as e:
         logger.error(f"Error en sincronización de inventario: {e}")
-        _add_job_history("sync_inventory", "Sincronización de Inventario", "failed", {"error": str(e)})
+        add_to_history("sync_inventory", "Sincronización de Inventario", "failed", {"error": str(e)})
         raise
 
 
@@ -206,36 +225,13 @@ async def run_invoices_sync():
         result = await loop.run_in_executor(None, sync_invoices_from_bind)
         logger.info(f"Sincronización de facturas completada: {result}")
         # Registrar en historial
-        _add_job_history("sync_invoices", "Sincronización de Facturas",
-                        "completed" if result.get("success") else "failed", result)
+        add_to_history("sync_invoices", "Sincronización de Facturas",
+                      "completed" if result.get("success") else "failed", result)
         return result
     except Exception as e:
         logger.error(f"Error en sincronización de facturas: {e}")
-        _add_job_history("sync_invoices", "Sincronización de Facturas", "failed", {"error": str(e)})
+        add_to_history("sync_invoices", "Sincronización de Facturas", "failed", {"error": str(e)})
         raise
-
-
-# Lista temporal para almacenar historial antes de que add_to_history esté definido
-_pending_history: list[tuple] = []
-
-
-def _add_job_history(job_id: str, job_name: str, status: str, details: dict = None):
-    """Wrapper para agregar historial (maneja el caso de definición tardía)."""
-    global job_history
-    entry = {
-        "timestamp": datetime.now().isoformat(),
-        "job_id": job_id,
-        "job_name": job_name,
-        "status": status,
-        "details": details or {},
-    }
-    # Acceder directamente a job_history que se define más adelante
-    try:
-        job_history.insert(0, entry)
-        if len(job_history) > 100:
-            job_history.pop()
-    except NameError:
-        _pending_history.append(entry)
 
 
 def verify_smartsheet_signature(
@@ -491,10 +487,6 @@ async def list_scheduler_jobs():
 
 # ========== ENDPOINTS DE ADMINISTRACIÓN ==========
 
-# Historial de ejecuciones (en memoria)
-job_history: list[dict] = []
-MAX_HISTORY = 100
-
 # Metadatos de jobs (descripciones, configuración, última ejecución)
 JOB_METADATA = {
     "sync_invoices": {
@@ -524,20 +516,23 @@ JOB_METADATA = {
         <div class="space-y-2 ml-2">
             <div class="flex items-start">
                 <span class="bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">1</span>
-                <span class="text-gray-300">Consulta las últimas <strong>500 facturas</strong> de Bind ERP (ordenadas por fecha desc)</span>
+                <span class="text-gray-300">Consulta facturas de los <strong>últimos 10 minutos</strong> en Bind ERP (zona horaria CDMX)</span>
             </div>
             <div class="flex items-start">
                 <span class="bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">2</span>
-                <span class="text-gray-300">Obtiene los UUIDs ya registrados en Smartsheet</span>
+                <span class="text-gray-300">Obtiene el mapa UUID → row_id de facturas existentes en Smartsheet</span>
             </div>
             <div class="flex items-start">
                 <span class="bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">3</span>
-                <span class="text-gray-300">Filtra facturas nuevas (compara UUID para evitar duplicados)</span>
+                <span class="text-gray-300"><strong>UPSERT:</strong> Si UUID existe → actualiza fila; Si no → inserta nueva</span>
             </div>
             <div class="flex items-start">
                 <span class="bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">4</span>
-                <span class="text-gray-300">Inserta las facturas nuevas en lotes de 100</span>
+                <span class="text-gray-300">Ejecuta operaciones en lotes de 100 (optimizado para API Smartsheet)</span>
             </div>
+        </div>
+        <div class="mt-3 p-2 bg-blue-900/20 border border-blue-700/50 rounded text-xs text-blue-300">
+            <strong>Zona Horaria:</strong> America/Mexico_City (CDMX) - Las fechas se convierten automáticamente
         </div>
     </div>
 
@@ -704,20 +699,6 @@ JOB_METADATA = {
 
 # Última ejecución de cada job
 job_last_run: dict[str, dict] = {}
-
-
-def add_to_history(job_id: str, job_name: str, status: str, details: dict = None):
-    """Agrega una entrada al historial de ejecuciones."""
-    entry = {
-        "timestamp": datetime.now().isoformat(),
-        "job_id": job_id,
-        "job_name": job_name,
-        "status": status,
-        "details": details or {},
-    }
-    job_history.insert(0, entry)
-    if len(job_history) > MAX_HISTORY:
-        job_history.pop()
 
 
 @app.get("/api/admin/jobs")

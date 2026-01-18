@@ -578,98 +578,155 @@ def get_existing_invoice_uuids(
         return set()
 
 
+def get_existing_invoices_map(
+    ss_service: SmartsheetService,
+    sheet_id: int,
+) -> dict[str, int]:
+    """
+    Obtiene un mapa de UUID -> row_id para facturas existentes en Smartsheet.
+
+    Args:
+        ss_service: Servicio Smartsheet
+        sheet_id: ID de la hoja
+
+    Returns:
+        Dict {UUID: row_id}
+    """
+    try:
+        sheet = ss_service.client.Sheets.get_sheet(sheet_id)
+
+        uuid_col_id = None
+        for col in sheet.columns:
+            if col.title == "UUID":
+                uuid_col_id = col.id
+                break
+
+        if not uuid_col_id:
+            return {}
+
+        uuid_to_row = {}
+        for row in sheet.rows:
+            for cell in row.cells:
+                if cell.column_id == uuid_col_id and cell.value:
+                    uuid_to_row[cell.value] = row.id
+
+        return uuid_to_row
+    except Exception as e:
+        logger.error(f"Error obteniendo mapa de UUIDs: {e}")
+        return {}
+
+
 def sync_invoices_from_bind(
     ss_service: SmartsheetService = None,
     bind_client: BindClient = None,
     sheet_id: int = None,
-    max_records: int = 500,
+    minutes_lookback: int = 10,
 ) -> dict:
     """
-    Sincroniza facturas de Bind ERP a Smartsheet.
-    Solo agrega facturas nuevas (verifica por UUID).
+    Sincroniza facturas de Bind ERP a Smartsheet (UPSERT).
+    - Obtiene solo facturas creadas/modificadas en los últimos N minutos
+    - Actualiza facturas existentes (por UUID) o inserta nuevas
+    - Maneja zona horaria de CDMX (America/Mexico_City)
 
     Args:
         ss_service: Servicio Smartsheet
         bind_client: Cliente Bind
         sheet_id: ID de la hoja de facturas
-        max_records: Máximo de facturas a obtener de Bind
+        minutes_lookback: Minutos hacia atrás para buscar facturas (default: 10)
 
     Returns:
         Dict con estadísticas de sincronización
     """
     from smartsheet.models import Row, Cell
+    from zoneinfo import ZoneInfo
 
     ss_service = ss_service or SmartsheetService()
     bind_client = bind_client or BindClient()
     sheet_id = sheet_id or settings.SMARTSHEET_INVOICES_SHEET_ID
 
+    # Zona horaria de CDMX
+    cdmx_tz = ZoneInfo("America/Mexico_City")
+    now_cdmx = datetime.now(cdmx_tz)
+    since_cdmx = now_cdmx - timedelta(minutes=minutes_lookback)
+
     result = {
         "success": False,
-        "timestamp": datetime.now().isoformat(),
+        "timestamp": now_cdmx.isoformat(),
+        "timezone": "America/Mexico_City",
+        "lookback_minutes": minutes_lookback,
+        "since": since_cdmx.isoformat(),
         "total_in_bind": 0,
-        "added": 0,
-        "skipped": 0,
+        "inserted": 0,
+        "updated": 0,
+        "unchanged": 0,
         "errors": [],
     }
 
     try:
-        logger.info("Iniciando sincronización de facturas Bind -> Smartsheet")
+        logger.info(f"Iniciando sincronización UPSERT de facturas Bind -> Smartsheet")
+        logger.info(f"Buscando facturas desde: {since_cdmx.strftime('%Y-%m-%d %H:%M:%S')} CDMX")
 
-        # Obtener facturas de Bind con paginación
-        all_invoices = []
-        skip = 0
-        page_size = 100
+        # Obtener facturas de Bind de los últimos N minutos
+        # Nota: Bind API usa la fecha del servidor, enviamos en formato ISO
+        invoices = bind_client.get_invoices(
+            created_since=since_cdmx.replace(tzinfo=None),  # Bind espera naive datetime
+            limit=500,
+            order_by="Date desc",
+        )
 
-        while len(all_invoices) < max_records:
-            invoices = bind_client.get_invoices(limit=page_size, skip=skip)
-            if not invoices:
-                break
-            all_invoices.extend(invoices)
-            skip += page_size
-            logger.info(f"Obtenidas {len(all_invoices)} facturas de Bind...")
+        result["total_in_bind"] = len(invoices)
+        logger.info(f"Facturas obtenidas de Bind (últimos {minutes_lookback} min): {len(invoices)}")
 
-        all_invoices = all_invoices[:max_records]
-        result["total_in_bind"] = len(all_invoices)
-        logger.info(f"Total facturas en Bind: {len(all_invoices)}")
-
-        if not all_invoices:
+        if not invoices:
             result["success"] = True
-            result["message"] = "No hay facturas en Bind"
+            result["message"] = f"No hay facturas nuevas en los últimos {minutes_lookback} minutos"
             return result
 
-        # Obtener UUIDs existentes en Smartsheet
-        existing_uuids = get_existing_invoice_uuids(ss_service, sheet_id)
-        logger.info(f"UUIDs existentes en Smartsheet: {len(existing_uuids)}")
-
-        # Filtrar facturas nuevas
-        new_invoices = [inv for inv in all_invoices if inv.get("UUID") not in existing_uuids]
-        result["skipped"] = len(all_invoices) - len(new_invoices)
-        logger.info(f"Facturas nuevas a sincronizar: {len(new_invoices)}")
-
-        if not new_invoices:
-            result["success"] = True
-            result["message"] = "No hay facturas nuevas"
-            return result
+        # Obtener mapa UUID -> row_id de Smartsheet
+        existing_map = get_existing_invoices_map(ss_service, sheet_id)
+        logger.info(f"Facturas existentes en Smartsheet: {len(existing_map)}")
 
         # Obtener estructura de la hoja
         sheet = ss_service.client.Sheets.get_sheet(sheet_id)
         column_map = {col.title: col.id for col in sheet.columns}
 
-        # Crear filas para Smartsheet
+        # Preparar filas para insertar y actualizar
         rows_to_add = []
-        now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        rows_to_update = []
+        now_str = now_cdmx.strftime("%Y-%m-%d %H:%M:%S")
 
-        for inv in new_invoices:
-            row = Row()
-            row.to_top = True
-            row.cells = []
+        for inv in invoices:
+            uuid = inv.get("UUID", "")
+            if not uuid:
+                logger.warning(f"Factura sin UUID ignorada: {inv.get('Number')}")
+                continue
+
+            # Formatear fecha de factura preservando zona horaria
+            fecha_bind = inv.get("Date", "")
+            if fecha_bind:
+                # Bind devuelve fechas en formato ISO, las convertimos a CDMX
+                try:
+                    # Parsear la fecha de Bind
+                    if "T" in fecha_bind:
+                        fecha_dt = datetime.fromisoformat(fecha_bind.replace("Z", "+00:00"))
+                        if fecha_dt.tzinfo is None:
+                            fecha_dt = fecha_dt.replace(tzinfo=cdmx_tz)
+                        else:
+                            fecha_dt = fecha_dt.astimezone(cdmx_tz)
+                        fecha_str = fecha_dt.strftime("%Y-%m-%d %H:%M:%S")
+                    else:
+                        fecha_str = fecha_bind[:10]
+                except Exception:
+                    fecha_str = fecha_bind[:10] if fecha_bind else ""
+            else:
+                fecha_str = ""
 
             # Mapear campos de Bind a columnas de Smartsheet
             field_mapping = {
-                "UUID": inv.get("UUID", ""),
+                "UUID": uuid,
                 "Serie": inv.get("Serie", ""),
                 "Folio": str(inv.get("Number", "")),
-                "Fecha": inv.get("Date", "")[:10] if inv.get("Date") else "",
+                "Fecha": fecha_str,
                 "Cliente": inv.get("ClientName", ""),
                 "RFC": inv.get("RFC", ""),
                 "Subtotal": f"${inv.get('Subtotal', 0):,.2f}",
@@ -682,35 +739,64 @@ def sync_invoices_from_bind(
                 "Comentarios": (inv.get("Comments", "") or "")[:500],
                 "Orden Compra": inv.get("PurchaseOrder", ""),
                 "Bind ID": inv.get("ID", ""),
-                "Ultima Sync": now,
+                "Ultima Sync": now_str,
             }
 
+            # Crear celdas
+            cells = []
             for field_name, value in field_mapping.items():
                 if field_name in column_map:
                     cell = Cell()
                     cell.column_id = column_map[field_name]
                     cell.value = str(value) if value else ""
-                    row.cells.append(cell)
+                    cells.append(cell)
 
-            rows_to_add.append(row)
+            if uuid in existing_map:
+                # ACTUALIZAR fila existente
+                row = Row()
+                row.id = existing_map[uuid]
+                row.cells = cells
+                rows_to_update.append(row)
+            else:
+                # INSERTAR nueva fila
+                row = Row()
+                row.to_top = True
+                row.cells = cells
+                rows_to_add.append(row)
 
-        # Agregar filas en lotes de 100
-        added = 0
+        # Ejecutar actualizaciones en lotes
         batch_size = 100
 
-        for i in range(0, len(rows_to_add), batch_size):
-            batch = rows_to_add[i:i + batch_size]
-            try:
-                add_result = ss_service.client.Sheets.add_rows(sheet_id, batch)
-                added += len(add_result.result)
-                logger.info(f"Agregadas {added} filas...")
-            except Exception as e:
-                logger.error(f"Error agregando filas: {e}")
-                result["errors"].append(str(e))
+        if rows_to_update:
+            logger.info(f"Actualizando {len(rows_to_update)} filas existentes...")
+            for i in range(0, len(rows_to_update), batch_size):
+                batch = rows_to_update[i:i + batch_size]
+                try:
+                    ss_service.client.Sheets.update_rows(sheet_id, batch)
+                    result["updated"] += len(batch)
+                except Exception as e:
+                    logger.error(f"Error actualizando filas: {e}")
+                    result["errors"].append(f"Error update: {str(e)}")
+
+        if rows_to_add:
+            logger.info(f"Insertando {len(rows_to_add)} filas nuevas...")
+            for i in range(0, len(rows_to_add), batch_size):
+                batch = rows_to_add[i:i + batch_size]
+                try:
+                    ss_service.client.Sheets.add_rows(sheet_id, batch)
+                    result["inserted"] += len(batch)
+                except Exception as e:
+                    logger.error(f"Error insertando filas: {e}")
+                    result["errors"].append(f"Error insert: {str(e)}")
 
         result["success"] = True
-        result["added"] = added
-        logger.info(f"Sincronización completada. Agregadas: {added}, Omitidas: {result['skipped']}")
+        result["unchanged"] = len(invoices) - result["inserted"] - result["updated"]
+        logger.info(
+            f"Sincronización UPSERT completada. "
+            f"Insertadas: {result['inserted']}, "
+            f"Actualizadas: {result['updated']}, "
+            f"Sin cambios: {result['unchanged']}"
+        )
 
     except BindAPIError as e:
         logger.error(f"Error de Bind en sincronización de facturas: {e}")
