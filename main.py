@@ -184,19 +184,58 @@ async def run_invoice_processing(sheet_id: int, row_id: int):
 async def run_inventory_sync():
     """Ejecuta la sincronización de inventario."""
     logger.info("Ejecutando sincronización programada de inventario...")
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, sync_inventory)
-    logger.info(f"Sincronización completada: {result}")
-    return result
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, sync_inventory)
+        logger.info(f"Sincronización completada: {result}")
+        # Registrar en historial
+        _add_job_history("sync_inventory", "Sincronización de Inventario",
+                        "completed" if result.get("success") else "failed", result)
+        return result
+    except Exception as e:
+        logger.error(f"Error en sincronización de inventario: {e}")
+        _add_job_history("sync_inventory", "Sincronización de Inventario", "failed", {"error": str(e)})
+        raise
 
 
 async def run_invoices_sync():
     """Ejecuta la sincronización de facturas Bind -> Smartsheet."""
     logger.info("Ejecutando sincronización programada de facturas...")
-    loop = asyncio.get_event_loop()
-    result = await loop.run_in_executor(None, sync_invoices_from_bind)
-    logger.info(f"Sincronización de facturas completada: {result}")
-    return result
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, sync_invoices_from_bind)
+        logger.info(f"Sincronización de facturas completada: {result}")
+        # Registrar en historial
+        _add_job_history("sync_invoices", "Sincronización de Facturas",
+                        "completed" if result.get("success") else "failed", result)
+        return result
+    except Exception as e:
+        logger.error(f"Error en sincronización de facturas: {e}")
+        _add_job_history("sync_invoices", "Sincronización de Facturas", "failed", {"error": str(e)})
+        raise
+
+
+# Lista temporal para almacenar historial antes de que add_to_history esté definido
+_pending_history: list[tuple] = []
+
+
+def _add_job_history(job_id: str, job_name: str, status: str, details: dict = None):
+    """Wrapper para agregar historial (maneja el caso de definición tardía)."""
+    global job_history
+    entry = {
+        "timestamp": datetime.now().isoformat(),
+        "job_id": job_id,
+        "job_name": job_name,
+        "status": status,
+        "details": details or {},
+    }
+    # Acceder directamente a job_history que se define más adelante
+    try:
+        job_history.insert(0, entry)
+        if len(job_history) > 100:
+            job_history.pop()
+    except NameError:
+        _pending_history.append(entry)
 
 
 def verify_smartsheet_signature(
@@ -460,76 +499,206 @@ MAX_HISTORY = 100
 JOB_METADATA = {
     "sync_invoices": {
         "name": "Sincronización de Facturas",
-        "description": "Sincroniza facturas de Bind ERP a Smartsheet",
-        "details": """
-<h4 class="font-semibold mb-2">¿Qué hace este proceso?</h4>
-<p class="text-gray-300 mb-4">Obtiene las facturas emitidas en Bind ERP y las registra en la hoja de Smartsheet configurada.</p>
+        "description": "Sincroniza facturas de Bind ERP a Smartsheet automáticamente",
+        "short_desc": "Bind ERP → Smartsheet | Facturas CFDI",
+        "icon": "invoice",
+        "details": f"""
+<div class="space-y-4">
+    <div class="bg-blue-900/30 border border-blue-700 rounded-lg p-4">
+        <h4 class="font-semibold text-blue-300 mb-2 flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            ¿Qué hace este proceso?
+        </h4>
+        <p class="text-gray-300">Extrae todas las facturas CFDI emitidas en <strong>Bind ERP</strong> y las registra automáticamente en una hoja de <strong>Smartsheet</strong>, evitando duplicados mediante verificación de UUID.</p>
+    </div>
 
-<h4 class="font-semibold mb-2">Flujo de sincronización:</h4>
-<ol class="list-decimal list-inside text-gray-300 mb-4 space-y-1">
-    <li>Consulta las últimas 500 facturas de Bind ERP (ordenadas por fecha)</li>
-    <li>Obtiene los UUIDs ya existentes en Smartsheet</li>
-    <li>Filtra solo las facturas nuevas (evita duplicados)</li>
-    <li>Agrega las facturas nuevas a Smartsheet</li>
-</ol>
+    <div>
+        <h4 class="font-semibold mb-3 flex items-center text-green-400">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+            Flujo de Sincronización
+        </h4>
+        <div class="space-y-2 ml-2">
+            <div class="flex items-start">
+                <span class="bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">1</span>
+                <span class="text-gray-300">Consulta las últimas <strong>500 facturas</strong> de Bind ERP (ordenadas por fecha desc)</span>
+            </div>
+            <div class="flex items-start">
+                <span class="bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">2</span>
+                <span class="text-gray-300">Obtiene los UUIDs ya registrados en Smartsheet</span>
+            </div>
+            <div class="flex items-start">
+                <span class="bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">3</span>
+                <span class="text-gray-300">Filtra facturas nuevas (compara UUID para evitar duplicados)</span>
+            </div>
+            <div class="flex items-start">
+                <span class="bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">4</span>
+                <span class="text-gray-300">Inserta las facturas nuevas en lotes de 100</span>
+            </div>
+        </div>
+    </div>
 
-<h4 class="font-semibold mb-2">Campos sincronizados:</h4>
-<div class="grid grid-cols-2 gap-2 text-sm text-gray-300 mb-4">
-    <span>• UUID</span><span>• Serie</span>
-    <span>• Folio</span><span>• Fecha</span>
-    <span>• Cliente</span><span>• RFC</span>
-    <span>• Subtotal</span><span>• IVA</span>
-    <span>• Total</span><span>• Moneda</span>
-    <span>• Uso CFDI</span><span>• Método Pago</span>
-    <span>• Estatus</span><span>• Comentarios</span>
+    <div>
+        <h4 class="font-semibold mb-3 flex items-center text-purple-400">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6M9 16h6"></path>
+            </svg>
+            Campos Sincronizados (16 columnas)
+        </h4>
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">UUID</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Serie</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Folio</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Fecha</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Cliente</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">RFC</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Subtotal</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">IVA</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Total</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Moneda</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Uso CFDI</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Método Pago</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Estatus</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Comentarios</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Orden Compra</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Bind ID</span>
+        </div>
+    </div>
+
+    <div class="bg-gray-700/30 rounded-lg p-4">
+        <h4 class="font-semibold mb-3 flex items-center text-cyan-400">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            Configuración Actual
+        </h4>
+        <div class="space-y-2 text-sm">
+            <div class="flex flex-col sm:flex-row sm:justify-between">
+                <span class="text-gray-400">Hoja Smartsheet:</span>
+                <span class="font-mono text-blue-400">{settings.SMARTSHEET_INVOICES_SHEET_ID}</span>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:justify-between">
+                <span class="text-gray-400">URL Smartsheet:</span>
+                <a href="https://app.smartsheet.com/sheets/{settings.SMARTSHEET_INVOICES_SHEET_ID}" target="_blank" class="text-blue-400 hover:underline truncate">Abrir hoja ↗</a>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:justify-between">
+                <span class="text-gray-400">Endpoint Bind:</span>
+                <span class="font-mono text-green-400">GET /api/Invoices</span>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:justify-between">
+                <span class="text-gray-400">Paginación:</span>
+                <span class="text-gray-300">OData ($top, $skip, $orderby)</span>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:justify-between">
+                <span class="text-gray-400">Detección duplicados:</span>
+                <span class="text-gray-300">Por UUID de factura CFDI</span>
+            </div>
+        </div>
+    </div>
 </div>
-
-<h4 class="font-semibold mb-2">Configuración:</h4>
-<ul class="text-gray-300 text-sm space-y-1">
-    <li>• <strong>Hoja destino:</strong> SMARTSHEET_INVOICES_SHEET_ID</li>
-    <li>• <strong>API Bind:</strong> GET /Invoices con paginación OData</li>
-    <li>• <strong>Detección duplicados:</strong> Por UUID de factura</li>
-</ul>
 """,
         "source": "Bind ERP → Smartsheet",
-        "endpoint": "/Invoices",
+        "endpoint": "GET /api/Invoices",
         "sheet_var": "SMARTSHEET_INVOICES_SHEET_ID",
+        "sheet_id": settings.SMARTSHEET_INVOICES_SHEET_ID,
     },
     "sync_inventory": {
         "name": "Sincronización de Inventario",
-        "description": "Sincroniza existencias de productos de Bind ERP a Smartsheet",
-        "details": """
-<h4 class="font-semibold mb-2">¿Qué hace este proceso?</h4>
-<p class="text-gray-300 mb-4">Obtiene las existencias actuales del almacén configurado en Bind ERP y actualiza la hoja de inventario en Smartsheet.</p>
+        "description": "Sincroniza existencias de productos desde Bind ERP",
+        "short_desc": "Bind ERP → Smartsheet | Stock de almacén",
+        "icon": "inventory",
+        "details": f"""
+<div class="space-y-4">
+    <div class="bg-amber-900/30 border border-amber-700 rounded-lg p-4">
+        <h4 class="font-semibold text-amber-300 mb-2 flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            ¿Qué hace este proceso?
+        </h4>
+        <p class="text-gray-300">Obtiene las <strong>existencias actuales</strong> del almacén configurado en Bind ERP y actualiza la hoja de inventario en Smartsheet con las cantidades en stock.</p>
+    </div>
 
-<h4 class="font-semibold mb-2">Flujo de sincronización:</h4>
-<ol class="list-decimal list-inside text-gray-300 mb-4 space-y-1">
-    <li>Consulta el inventario del almacén en Bind ERP</li>
-    <li>Obtiene los productos existentes en Smartsheet</li>
-    <li>Actualiza existencias de productos ya registrados</li>
-    <li>Identifica productos nuevos (pendiente: agregar automáticamente)</li>
-</ol>
+    <div>
+        <h4 class="font-semibold mb-3 flex items-center text-green-400">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+            </svg>
+            Flujo de Sincronización
+        </h4>
+        <div class="space-y-2 ml-2">
+            <div class="flex items-start">
+                <span class="bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">1</span>
+                <span class="text-gray-300">Consulta el inventario del almacén en Bind ERP</span>
+            </div>
+            <div class="flex items-start">
+                <span class="bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">2</span>
+                <span class="text-gray-300">Obtiene los productos existentes en la hoja de Smartsheet</span>
+            </div>
+            <div class="flex items-start">
+                <span class="bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">3</span>
+                <span class="text-gray-300">Actualiza existencias de productos ya registrados</span>
+            </div>
+            <div class="flex items-start">
+                <span class="bg-green-600 text-white text-xs font-bold rounded-full w-5 h-5 flex items-center justify-center mr-3 mt-0.5 flex-shrink-0">4</span>
+                <span class="text-gray-300">Registra la fecha/hora de última actualización</span>
+            </div>
+        </div>
+    </div>
 
-<h4 class="font-semibold mb-2">Campos sincronizados:</h4>
-<div class="grid grid-cols-2 gap-2 text-sm text-gray-300 mb-4">
-    <span>• Código</span><span>• Nombre</span>
-    <span>• Existencia</span><span>• Almacén</span>
-    <span>• Última Actualización</span><span></span>
+    <div>
+        <h4 class="font-semibold mb-3 flex items-center text-purple-400">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2 1 3 3 3h10c2 0 3-1 3-3V7c0-2-1-3-3-3H7C5 4 4 5 4 7z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6M9 16h6"></path>
+            </svg>
+            Campos Sincronizados (5 columnas)
+        </h4>
+        <div class="grid grid-cols-2 sm:grid-cols-3 gap-2 text-sm">
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Código</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Nombre</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Existencia</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Almacén</span>
+            <span class="bg-gray-700/50 px-2 py-1 rounded text-gray-300">Última Actualización</span>
+        </div>
+    </div>
+
+    <div class="bg-gray-700/30 rounded-lg p-4">
+        <h4 class="font-semibold mb-3 flex items-center text-cyan-400">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            Configuración Actual
+        </h4>
+        <div class="space-y-2 text-sm">
+            <div class="flex flex-col sm:flex-row sm:justify-between">
+                <span class="text-gray-400">Hoja Smartsheet:</span>
+                <span class="font-mono {'text-yellow-400' if settings.SMARTSHEET_INVENTORY_SHEET_ID == 0 else 'text-blue-400'}">{settings.SMARTSHEET_INVENTORY_SHEET_ID if settings.SMARTSHEET_INVENTORY_SHEET_ID != 0 else 'No configurada'}</span>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:justify-between">
+                <span class="text-gray-400">ID Almacén Bind:</span>
+                <span class="font-mono text-green-400 truncate">{settings.BIND_WAREHOUSE_ID or 'No configurado'}</span>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:justify-between">
+                <span class="text-gray-400">Endpoint Bind:</span>
+                <span class="font-mono text-green-400">GET /api/Inventory</span>
+            </div>
+        </div>
+    </div>
+
+    {'<div class="bg-yellow-900/30 border border-yellow-600 rounded-lg p-4"><p class="text-yellow-300 text-sm flex items-start"><svg class="w-5 h-5 mr-2 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg><span><strong>Proceso inactivo:</strong> La hoja de inventario no está configurada (SMARTSHEET_INVENTORY_SHEET_ID=0). Configure el ID de la hoja en las variables de entorno para activar este proceso.</span></p></div>' if settings.SMARTSHEET_INVENTORY_SHEET_ID == 0 else ''}
 </div>
-
-<h4 class="font-semibold mb-2">Configuración:</h4>
-<ul class="text-gray-300 text-sm space-y-1">
-    <li>• <strong>Hoja destino:</strong> SMARTSHEET_INVENTORY_SHEET_ID</li>
-    <li>• <strong>Almacén:</strong> BIND_WAREHOUSE_ID</li>
-    <li>• <strong>API Bind:</strong> GET /Inventory con filtro por almacén</li>
-</ul>
-
-<h4 class="font-semibold mt-4 mb-2 text-yellow-400">⚠️ Estado actual:</h4>
-<p class="text-yellow-300 text-sm">Este proceso está configurado pero la hoja de inventario no está definida (SMARTSHEET_INVENTORY_SHEET_ID=0). Configure el ID de la hoja para activarlo.</p>
 """,
         "source": "Bind ERP → Smartsheet",
-        "endpoint": "/Inventory",
+        "endpoint": "GET /api/Inventory",
         "sheet_var": "SMARTSHEET_INVENTORY_SHEET_ID",
+        "sheet_id": settings.SMARTSHEET_INVENTORY_SHEET_ID,
     },
 }
 
@@ -1046,57 +1215,77 @@ def get_embedded_dashboard() -> str:
                 container.innerHTML = data.jobs.map(job => {
                     const isPaused = !job.next_run;
                     const intervalMin = job.trigger.interval_minutes ? Math.round(job.trigger.interval_minutes) : '-';
+                    const jobIcon = job.id === 'sync_invoices' ?
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>' :
+                        '<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"></path></svg>';
 
                     return `
-                        <div class="bg-gray-700/50 rounded-lg p-3 sm:p-4 border border-gray-600">
-                            <div class="flex items-start justify-between mb-2 gap-2">
-                                <div class="min-w-0 flex-1">
-                                    <h3 class="font-semibold text-sm sm:text-base truncate">${job.name}</h3>
-                                    <p class="text-xs text-gray-400 truncate">${job.description || 'ID: ' + job.id}</p>
-                                </div>
-                                <span class="px-2 sm:px-3 py-1 rounded-full text-xs font-medium flex-shrink-0 ${isPaused ? 'bg-yellow-600/20 text-yellow-400' : 'bg-green-600/20 text-green-400'}">
-                                    ${isPaused ? 'Pausado' : 'Activo'}
-                                </span>
-                            </div>
-                            ${job.source ? `<p class="text-xs text-blue-400 mb-2 sm:mb-3 truncate">${job.source}</p>` : ''}
-                            <div class="grid grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm mb-3 sm:mb-4">
-                                <div>
-                                    <p class="text-gray-400">Intervalo</p>
-                                    <p class="font-medium">${intervalMin} min</p>
-                                </div>
-                                <div>
-                                    <p class="text-gray-400">Próxima ejecución</p>
-                                    <p class="font-medium text-xs sm:text-sm">${formatDate(job.next_run)}</p>
+                        <div class="bg-gray-700/50 rounded-lg border border-gray-600 overflow-hidden">
+                            <!-- Header con icono y estado -->
+                            <div class="p-3 sm:p-4 border-b border-gray-600">
+                                <div class="flex items-start gap-3">
+                                    <div class="w-10 h-10 sm:w-12 sm:h-12 ${job.id === 'sync_invoices' ? 'bg-blue-600/20 text-blue-400' : 'bg-amber-600/20 text-amber-400'} rounded-lg flex items-center justify-center flex-shrink-0">
+                                        ${jobIcon}
+                                    </div>
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center justify-between gap-2">
+                                            <h3 class="font-semibold text-sm sm:text-base">${job.name}</h3>
+                                            <span class="px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${isPaused ? 'bg-yellow-600/20 text-yellow-400' : 'bg-green-600/20 text-green-400'}">
+                                                ${isPaused ? 'Pausado' : 'Activo'}
+                                            </span>
+                                        </div>
+                                        <p class="text-xs text-gray-400 mt-0.5">${job.description || ''}</p>
+                                        ${job.source ? `<p class="text-xs text-blue-400 mt-1">${job.source}</p>` : ''}
+                                    </div>
                                 </div>
                             </div>
-                            <div class="grid grid-cols-2 sm:flex gap-2 sm:space-x-2 sm:gap-0">
-                                <button onclick="openDetailsModal('${job.id}')"
-                                        class="bg-indigo-600 hover:bg-indigo-700 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm transition flex items-center justify-center space-x-1 sm:flex-1">
-                                    <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                    </svg>
-                                    <span>Detalles</span>
-                                </button>
+
+                            <!-- Info de tiempos -->
+                            <div class="px-3 sm:px-4 py-2 bg-gray-800/30 grid grid-cols-2 gap-2 text-xs sm:text-sm">
+                                <div>
+                                    <span class="text-gray-500">Intervalo:</span>
+                                    <span class="font-medium ml-1">${intervalMin} min</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500">Próxima:</span>
+                                    <span class="font-medium ml-1">${formatDate(job.next_run)}</span>
+                                </div>
+                            </div>
+
+                            <!-- BOTÓN VER DETALLES PROMINENTE -->
+                            <button onclick="openDetailsModal('${job.id}')"
+                                    class="w-full bg-gradient-to-r ${job.id === 'sync_invoices' ? 'from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500' : 'from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500'} px-4 py-3 text-sm font-medium transition flex items-center justify-center gap-2">
+                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                </svg>
+                                <span>VER DETALLES DEL PROCESO</span>
+                            </button>
+
+                            <!-- Botones de acciones -->
+                            <div class="p-3 sm:p-4 flex flex-wrap gap-2">
                                 <button onclick="runJob('${job.id}')"
-                                        class="bg-blue-600 hover:bg-blue-700 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm transition sm:flex-1">
+                                        class="flex-1 min-w-[80px] bg-gray-600 hover:bg-gray-500 px-3 py-2 rounded-lg text-xs sm:text-sm transition flex items-center justify-center gap-1">
+                                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
+                                    </svg>
                                     Ejecutar
                                 </button>
                                 ${isPaused ? `
                                     <button onclick="resumeJob('${job.id}')"
-                                            class="bg-green-600 hover:bg-green-700 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm transition flex items-center justify-center">
-                                        <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            class="flex-1 min-w-[80px] bg-green-600 hover:bg-green-500 px-3 py-2 rounded-lg text-xs sm:text-sm transition flex items-center justify-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
-                                        <span class="ml-1 sm:hidden">Reanudar</span>
+                                        Reanudar
                                     </button>
                                 ` : `
                                     <button onclick="pauseJob('${job.id}')"
-                                            class="bg-yellow-600 hover:bg-yellow-700 px-2 sm:px-3 py-2 rounded-lg text-xs sm:text-sm transition flex items-center justify-center">
-                                        <svg class="w-3 h-3 sm:w-4 sm:h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            class="flex-1 min-w-[80px] bg-yellow-600 hover:bg-yellow-500 px-3 py-2 rounded-lg text-xs sm:text-sm transition flex items-center justify-center gap-1">
+                                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 9v6m4-6v6m7-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
                                         </svg>
-                                        <span class="ml-1 sm:hidden">Pausar</span>
+                                        Pausar
                                     </button>
                                 `}
                                 <button onclick="openIntervalModal('${job.id}', '${job.name}', ${intervalMin})"
@@ -1125,7 +1314,16 @@ def get_embedded_dashboard() -> str:
                 const container = document.getElementById('history-container');
 
                 if (data.history.length === 0) {
-                    container.innerHTML = '<p class="text-gray-400">Sin historial de ejecuciones</p>';
+                    container.innerHTML = `
+                        <div class="text-center py-6">
+                            <svg class="w-12 h-12 mx-auto text-gray-600 mb-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                            </svg>
+                            <p class="text-gray-400 text-sm mb-2">Sin ejecuciones registradas</p>
+                            <p class="text-gray-500 text-xs">El historial aparecerá cuando los procesos se ejecuten automáticamente o de forma manual.</p>
+                            <p class="text-gray-500 text-xs mt-2">Los procesos se ejecutan cada <strong class="text-gray-400">2 min</strong> (facturas) y <strong class="text-gray-400">60 min</strong> (inventario).</p>
+                        </div>
+                    `;
                     return;
                 }
 
