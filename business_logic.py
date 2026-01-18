@@ -667,10 +667,10 @@ def sync_invoices_from_bind(
         logger.info(f"Buscando facturas desde: {since_cdmx.strftime('%Y-%m-%d %H:%M:%S')} CDMX")
 
         # Obtener facturas de Bind de los últimos N minutos
-        # Nota: Bind API usa la fecha del servidor, enviamos en formato ISO
+        # Nota: Bind API tiene límite de 100 registros por request
         invoices = bind_client.get_invoices(
             created_since=since_cdmx.replace(tzinfo=None),  # Bind espera naive datetime
-            limit=500,
+            limit=100,  # Máximo permitido por Bind API
             order_by="Date desc",
         )
 
