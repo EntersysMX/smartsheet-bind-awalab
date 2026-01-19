@@ -46,6 +46,10 @@ class ProcessConfig(Base):
     interval_minutes = Column(Integer, default=60)
     is_active = Column(Boolean, default=True)
 
+    # Horario de operación (hora en formato 24h, zona CDMX)
+    operating_start_hour = Column(Integer, default=7)   # 7 AM
+    operating_end_hour = Column(Integer, default=20)    # 8 PM
+
     # Metadatos del proceso
     source_system = Column(String(50))  # "bind" o "smartsheet"
     target_system = Column(String(50))  # "bind" o "smartsheet"
@@ -69,6 +73,8 @@ class ProcessConfig(Base):
             "smartsheet_sheet_name": self.smartsheet_sheet_name,
             "interval_minutes": self.interval_minutes,
             "is_active": self.is_active,
+            "operating_start_hour": self.operating_start_hour or 7,
+            "operating_end_hour": self.operating_end_hour or 20,
             "source_system": self.source_system,
             "target_system": self.target_system,
             "sync_direction": self.sync_direction,
@@ -119,6 +125,8 @@ def create_or_update_process_config(
     smartsheet_sheet_name: str = None,
     interval_minutes: int = 60,
     is_active: bool = True,
+    operating_start_hour: int = 7,
+    operating_end_hour: int = 20,
     source_system: str = None,
     target_system: str = None,
     sync_direction: str = None,
@@ -137,6 +145,8 @@ def create_or_update_process_config(
             config.smartsheet_sheet_name = smartsheet_sheet_name
             config.interval_minutes = interval_minutes
             config.is_active = is_active
+            config.operating_start_hour = operating_start_hour
+            config.operating_end_hour = operating_end_hour
             config.source_system = source_system
             config.target_system = target_system
             config.sync_direction = sync_direction
@@ -152,6 +162,8 @@ def create_or_update_process_config(
                 smartsheet_sheet_name=smartsheet_sheet_name,
                 interval_minutes=interval_minutes,
                 is_active=is_active,
+                operating_start_hour=operating_start_hour,
+                operating_end_hour=operating_end_hour,
                 source_system=source_system,
                 target_system=target_system,
                 sync_direction=sync_direction,

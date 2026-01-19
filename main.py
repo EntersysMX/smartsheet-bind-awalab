@@ -34,7 +34,7 @@ from business_logic import (
 )
 from config import settings
 from smartsheet_service import SmartsheetService
-from database import init_db, seed_default_configs, get_process_config, get_all_process_configs, create_or_update_process_config
+from database import init_db, seed_default_configs, get_process_config, get_all_process_configs, create_or_update_process_config, SessionLocal, ProcessConfig
 
 # ========== CONFIGURACIÓN DE LOGGING ==========
 
@@ -210,17 +210,20 @@ async def run_invoice_processing(sheet_id: int, row_id: int):
     )
 
 
-def is_within_operating_hours() -> bool:
-    """Verifica si estamos dentro del horario operativo (7 AM - 8 PM CDMX)."""
+def is_within_operating_hours(job_id: str) -> bool:
+    """Verifica si estamos dentro del horario operativo para un proceso específico."""
+    config = get_process_config(job_id)
+    start_hour = config.operating_start_hour if config and config.operating_start_hour is not None else 7
+    end_hour = config.operating_end_hour if config and config.operating_end_hour is not None else 20
     now = datetime.now(CDMX_TZ)
-    return 7 <= now.hour < 20
+    return start_hour <= now.hour < end_hour
 
 
 async def run_inventory_sync():
     """Ejecuta la sincronización de inventario."""
     # Verificar horario operativo
-    if not is_within_operating_hours():
-        logger.info("Sincronización de inventario omitida - fuera de horario operativo (7 AM - 8 PM)")
+    if not is_within_operating_hours("sync_inventory"):
+        logger.info("Sincronización de inventario omitida - fuera de horario operativo")
         return {"success": True, "skipped": True, "reason": "Fuera de horario operativo"}
 
     logger.info("Ejecutando sincronización programada de inventario...")
@@ -245,8 +248,8 @@ async def run_inventory_sync():
 async def run_invoices_sync():
     """Ejecuta la sincronización de facturas Bind -> Smartsheet."""
     # Verificar horario operativo
-    if not is_within_operating_hours():
-        logger.info("Sincronización de facturas omitida - fuera de horario operativo (7 AM - 8 PM)")
+    if not is_within_operating_hours("sync_invoices"):
+        logger.info("Sincronización de facturas omitida - fuera de horario operativo")
         return {"success": True, "skipped": True, "reason": "Fuera de horario operativo"}
 
     logger.info("Ejecutando sincronización programada de facturas...")
@@ -908,6 +911,40 @@ async def admin_update_interval(job_id: str, minutes: int):
         "message": f"Job '{job_id}' reprogramado a cada {minutes} minutos",
         "timestamp": datetime.now(CDMX_TZ).isoformat(),
     }
+
+
+@app.put("/api/admin/jobs/{job_id}/operating-hours")
+async def admin_update_operating_hours(job_id: str, start_hour: int, end_hour: int):
+    """Actualiza el horario de operación de un job."""
+    if start_hour < 0 or start_hour > 23:
+        raise HTTPException(status_code=400, detail="La hora de inicio debe estar entre 0 y 23")
+    if end_hour < 0 or end_hour > 23:
+        raise HTTPException(status_code=400, detail="La hora de fin debe estar entre 0 y 23")
+    if start_hour >= end_hour:
+        raise HTTPException(status_code=400, detail="La hora de inicio debe ser menor a la hora de fin")
+
+    # Actualizar en la base de datos
+    db = SessionLocal()
+    try:
+        config = db.query(ProcessConfig).filter(ProcessConfig.job_id == job_id).first()
+        if not config:
+            raise HTTPException(status_code=404, detail=f"Configuración de proceso '{job_id}' no encontrada")
+
+        config.operating_start_hour = start_hour
+        config.operating_end_hour = end_hour
+        config.updated_at = datetime.now(CDMX_TZ)
+        db.commit()
+
+        add_to_history(job_id, config.name, "hours_changed", {"start": start_hour, "end": end_hour})
+        logger.info(f"Horario de '{job_id}' actualizado: {start_hour}:00 - {end_hour}:00")
+
+        return {
+            "success": True,
+            "message": f"Horario actualizado: {start_hour}:00 - {end_hour}:00",
+            "timestamp": datetime.now(CDMX_TZ).isoformat(),
+        }
+    finally:
+        db.close()
 
 
 @app.get("/api/admin/stats")
