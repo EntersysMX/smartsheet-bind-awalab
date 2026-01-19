@@ -2347,13 +2347,17 @@
                 const hoursRes = await fetch(`/api/admin/jobs/${currentJobId}/operating-hours?start_hour=${startHour}&end_hour=${endHour}`, { method: 'PUT' });
                 const hoursData = await hoursRes.json();
 
-                if (intervalRes.ok && hoursRes.ok) {
+                if (intervalRes.ok && hoursRes.ok && intervalData.success && hoursData.success) {
                     closeConfigModal();
-                    await new Promise(resolve => setTimeout(resolve, 500));
+                    showSnackbar('Guardando configuracion...', 'info');
+                    // Esperar mas tiempo para que el scheduler actualice
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                     await refreshAll();
                     showSnackbar('Configuracion guardada correctamente', 'success');
                 } else {
-                    showSnackbar(intervalData.detail || hoursData.detail || 'Error al guardar', 'error');
+                    const errorMsg = intervalData.detail || hoursData.detail || intervalData.message || hoursData.message || 'Error al guardar';
+                    showSnackbar(errorMsg, 'error');
+                    console.error('Error response:', { intervalData, hoursData });
                 }
             } catch (e) {
                 console.error('Error saving config:', e);
