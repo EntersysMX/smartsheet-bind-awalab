@@ -611,13 +611,26 @@ CFDI_USE_MAP = {
     24: "CN01 - Nomina",
 }
 
-# Mapeo de estatus de factura
-INVOICE_STATUS_MAP = {
-    0: "Borrador",
-    1: "Activa",
-    2: "Cancelada",
-    3: "Pagada",
-}
+# Mapeo de estatus de factura en Bind ERP
+# Status 0 = Vigente (timbrada) o Borrador (sin timbrar)
+# Status 1 = Pagada
+# Status 2 = Cancelada
+def get_invoice_status(inv: dict) -> str:
+    """Determina el estatus real de una factura."""
+    status = inv.get("Status", 0)
+    has_uuid = bool(inv.get("UUID"))
+
+    if status == 2:
+        return "Cancelada"
+    elif status == 1:
+        return "Pagada"
+    elif status == 0:
+        if has_uuid:
+            return "Vigente"
+        else:
+            return "Borrador"
+    else:
+        return "Desconocido"
 
 
 def get_existing_invoice_uuids(
@@ -816,7 +829,7 @@ def sync_invoices_from_bind(
                 "Moneda": "MXN" if "b7e2c065" in str(inv.get("CurrencyID", "")) else "USD",
                 "Uso CFDI": CFDI_USE_MAP.get(inv.get("CFDIUse", 0), "Desconocido"),
                 "Metodo Pago": "PUE" if inv.get("IsFiscalInvoice") else "PPD",
-                "Estatus": INVOICE_STATUS_MAP.get(inv.get("Status", 0), "Desconocido"),
+                "Estatus": get_invoice_status(inv),
                 "Comentarios": (inv.get("Comments", "") or "")[:500],
                 "Orden Compra": inv.get("PurchaseOrder", ""),
                 "Bind ID": inv.get("ID", ""),
