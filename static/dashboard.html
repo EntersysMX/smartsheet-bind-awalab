@@ -2028,9 +2028,11 @@
                 const data = await res.json();
 
                 if (res.ok && data.success) {
-                    showSnackbar('Intervalo actualizado a ' + minutes + ' min', 'success');
                     closeModal();
+                    // Esperar un momento para que el servidor actualice
+                    await new Promise(resolve => setTimeout(resolve, 500));
                     await refreshAll();
+                    showSnackbar('Intervalo actualizado a ' + minutes + ' min', 'success');
                 } else {
                     showSnackbar(data.detail || data.message || 'Error al guardar', 'error');
                 }
@@ -2148,10 +2150,7 @@
             }
         }
 
-        // Auto refresh every 30 seconds
-        setInterval(refreshAll, 30000);
-
-        // Initial load
+        // Initial load (no auto-refresh, solo manual)
         refreshAll();
     </script>
 </body>
