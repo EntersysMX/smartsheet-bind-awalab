@@ -793,13 +793,14 @@ def sync_invoices_from_bind(
                             fecha_dt = fecha_dt.replace(tzinfo=cdmx_tz)
                         else:
                             fecha_dt = fecha_dt.astimezone(cdmx_tz)
-                        fecha_str = fecha_dt.strftime("%Y-%m-%d %H:%M:%S")
+                        # Smartsheet DATE column requiere formato ISO (YYYY-MM-DD)
+                        fecha_str = fecha_dt.strftime("%Y-%m-%d")
                     else:
                         fecha_str = fecha_bind[:10]
                 except Exception:
                     fecha_str = fecha_bind[:10] if fecha_bind else ""
             else:
-                fecha_str = ""
+                fecha_str = None  # None para columnas DATE vacías
 
             # Mapear campos de Bind a columnas de Smartsheet
             field_mapping = {
