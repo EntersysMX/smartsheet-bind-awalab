@@ -684,7 +684,8 @@
             color: var(--md-sys-color-success);
         }
 
-        .history-status.interval_changed {
+        .history-status.interval_changed,
+        .history-status.hours_changed {
             background: var(--md-sys-color-secondary-container);
             color: var(--md-sys-color-on-secondary-container);
         }
@@ -933,6 +934,168 @@
             top: 0;
             font-size: 0.75rem;
             color: var(--md-sys-color-primary);
+        }
+
+        /* ===== Config Modal Styles ===== */
+        .config-section {
+            background: var(--md-sys-color-surface-container-high);
+            border-radius: 12px;
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .config-section-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-weight: 500;
+            color: var(--md-sys-color-primary);
+            margin-bottom: 16px;
+        }
+
+        .config-section-header .material-icons {
+            font-size: 20px;
+        }
+
+        .config-section-content {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .config-hint {
+            font-size: 0.75rem;
+            color: var(--md-sys-color-on-surface-variant);
+            margin: 0;
+        }
+
+        /* Interval Selector */
+        .interval-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .interval-btn {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            border: 1px solid var(--md-sys-color-outline);
+            background: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .interval-btn:hover {
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            border-color: var(--md-sys-color-primary);
+        }
+
+        .interval-btn:active {
+            transform: scale(0.95);
+        }
+
+        .interval-display {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: var(--md-sys-color-surface);
+            border-radius: 8px;
+            border: 2px solid var(--md-sys-color-primary);
+        }
+
+        .interval-display input {
+            width: 60px;
+            border: none;
+            background: transparent;
+            font-size: 1.5rem;
+            font-weight: 500;
+            text-align: center;
+            color: var(--md-sys-color-primary);
+        }
+
+        .interval-display input:focus {
+            outline: none;
+        }
+
+        .interval-display span {
+            font-size: 0.875rem;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .interval-presets, .hours-presets {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            justify-content: center;
+        }
+
+        .preset-chip {
+            padding: 6px 14px;
+            border-radius: 16px;
+            border: 1px solid var(--md-sys-color-outline-variant);
+            background: transparent;
+            color: var(--md-sys-color-on-surface);
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .preset-chip:hover {
+            background: var(--md-sys-color-secondary-container);
+            border-color: var(--md-sys-color-secondary);
+            color: var(--md-sys-color-on-secondary-container);
+        }
+
+        /* Hours Selector */
+        .hours-selector {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 16px;
+        }
+
+        .hour-input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .hour-input-group label {
+            font-size: 0.625rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--md-sys-color-on-surface-variant);
+            text-align: center;
+        }
+
+        .hour-input-group select {
+            padding: 10px 16px;
+            border-radius: 8px;
+            border: 1px solid var(--md-sys-color-outline);
+            background: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            font-size: 0.875rem;
+            cursor: pointer;
+            min-width: 120px;
+        }
+
+        .hour-input-group select:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            border-width: 2px;
+        }
+
+        .hours-separator {
+            font-size: 1rem;
+            color: var(--md-sys-color-on-surface-variant);
+            padding-top: 16px;
         }
 
         /* ===== Snackbar ===== */
@@ -1567,31 +1730,129 @@
         </div>
     </main>
 
-    <!-- Interval Modal -->
-    <div id="interval-modal" class="modal-overlay">
+    <!-- Configuration Modal -->
+    <div id="config-modal" class="modal-overlay">
         <div class="modal">
             <div class="modal-header">
                 <div>
-                    <h3 class="modal-title">Cambiar Intervalo</h3>
+                    <h3 class="modal-title">Configurar Proceso</h3>
                     <p id="modal-job-name" class="modal-subtitle"></p>
                 </div>
-                <button class="modal-close" onclick="closeModal()">
+                <button class="modal-close" onclick="closeConfigModal()">
                     <span class="material-icons">close</span>
                 </button>
             </div>
             <div class="modal-body">
-                <div class="text-field">
-                    <input type="number" id="interval-input" min="1" max="1440" placeholder=" ">
-                    <label>Intervalo (minutos)</label>
+                <!-- Intervalo Section -->
+                <div class="config-section">
+                    <div class="config-section-header">
+                        <span class="material-icons">timer</span>
+                        <span>Intervalo de Ejecucion</span>
+                    </div>
+                    <div class="config-section-content">
+                        <div class="interval-selector">
+                            <button type="button" class="interval-btn" onclick="adjustInterval(-10)">-10</button>
+                            <button type="button" class="interval-btn" onclick="adjustInterval(-1)">-1</button>
+                            <div class="interval-display">
+                                <input type="number" id="interval-input" min="1" max="1440" value="10">
+                                <span>minutos</span>
+                            </div>
+                            <button type="button" class="interval-btn" onclick="adjustInterval(1)">+1</button>
+                            <button type="button" class="interval-btn" onclick="adjustInterval(10)">+10</button>
+                        </div>
+                        <div class="interval-presets">
+                            <button type="button" class="preset-chip" onclick="setInterval(2)">2 min</button>
+                            <button type="button" class="preset-chip" onclick="setInterval(5)">5 min</button>
+                            <button type="button" class="preset-chip" onclick="setInterval(10)">10 min</button>
+                            <button type="button" class="preset-chip" onclick="setInterval(30)">30 min</button>
+                            <button type="button" class="preset-chip" onclick="setInterval(60)">1 hora</button>
+                        </div>
+                    </div>
                 </div>
-                <p style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;">
-                    El intervalo define cada cuanto tiempo se ejecutara el proceso automaticamente.
-                    Minimo: 1 minuto, Maximo: 1440 minutos (24 horas).
-                </p>
+
+                <!-- Horario Section -->
+                <div class="config-section">
+                    <div class="config-section-header">
+                        <span class="material-icons">schedule</span>
+                        <span>Horario de Operacion</span>
+                    </div>
+                    <div class="config-section-content">
+                        <p class="config-hint">El proceso solo se ejecutara dentro de este horario (CDMX)</p>
+                        <div class="hours-selector">
+                            <div class="hour-input-group">
+                                <label>Inicio</label>
+                                <select id="start-hour-input">
+                                    <option value="0">12:00 AM</option>
+                                    <option value="1">1:00 AM</option>
+                                    <option value="2">2:00 AM</option>
+                                    <option value="3">3:00 AM</option>
+                                    <option value="4">4:00 AM</option>
+                                    <option value="5">5:00 AM</option>
+                                    <option value="6">6:00 AM</option>
+                                    <option value="7" selected>7:00 AM</option>
+                                    <option value="8">8:00 AM</option>
+                                    <option value="9">9:00 AM</option>
+                                    <option value="10">10:00 AM</option>
+                                    <option value="11">11:00 AM</option>
+                                    <option value="12">12:00 PM</option>
+                                    <option value="13">1:00 PM</option>
+                                    <option value="14">2:00 PM</option>
+                                    <option value="15">3:00 PM</option>
+                                    <option value="16">4:00 PM</option>
+                                    <option value="17">5:00 PM</option>
+                                    <option value="18">6:00 PM</option>
+                                    <option value="19">7:00 PM</option>
+                                    <option value="20">8:00 PM</option>
+                                    <option value="21">9:00 PM</option>
+                                    <option value="22">10:00 PM</option>
+                                    <option value="23">11:00 PM</option>
+                                </select>
+                            </div>
+                            <span class="hours-separator">a</span>
+                            <div class="hour-input-group">
+                                <label>Fin</label>
+                                <select id="end-hour-input">
+                                    <option value="1">1:00 AM</option>
+                                    <option value="2">2:00 AM</option>
+                                    <option value="3">3:00 AM</option>
+                                    <option value="4">4:00 AM</option>
+                                    <option value="5">5:00 AM</option>
+                                    <option value="6">6:00 AM</option>
+                                    <option value="7">7:00 AM</option>
+                                    <option value="8">8:00 AM</option>
+                                    <option value="9">9:00 AM</option>
+                                    <option value="10">10:00 AM</option>
+                                    <option value="11">11:00 AM</option>
+                                    <option value="12">12:00 PM</option>
+                                    <option value="13">1:00 PM</option>
+                                    <option value="14">2:00 PM</option>
+                                    <option value="15">3:00 PM</option>
+                                    <option value="16">4:00 PM</option>
+                                    <option value="17">5:00 PM</option>
+                                    <option value="18">6:00 PM</option>
+                                    <option value="19">7:00 PM</option>
+                                    <option value="20" selected>8:00 PM</option>
+                                    <option value="21">9:00 PM</option>
+                                    <option value="22">10:00 PM</option>
+                                    <option value="23">11:00 PM</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="hours-presets">
+                            <button type="button" class="preset-chip" onclick="setHours(6, 22)">6 AM - 10 PM</button>
+                            <button type="button" class="preset-chip" onclick="setHours(7, 20)">7 AM - 8 PM</button>
+                            <button type="button" class="preset-chip" onclick="setHours(8, 18)">8 AM - 6 PM</button>
+                            <button type="button" class="preset-chip" onclick="setHours(9, 17)">9 AM - 5 PM</button>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="modal-footer">
-                <button class="btn btn-text" onclick="closeModal()">Cancelar</button>
-                <button class="btn btn-filled" onclick="saveInterval()">Guardar</button>
+                <button class="btn btn-text" onclick="closeConfigModal()">Cancelar</button>
+                <button class="btn btn-filled" onclick="saveConfig()">
+                    <span class="material-icons">save</span>
+                    Guardar Cambios
+                </button>
             </div>
         </div>
     </div>
@@ -1928,6 +2189,7 @@
                     'paused': 'Pausado',
                     'resumed': 'Reanudado',
                     'interval_changed': 'Intervalo',
+                    'hours_changed': 'Horario',
                     'failed': 'Fallido',
                 };
 
@@ -2002,23 +2264,70 @@
             }
         }
 
-        // Interval modal
-        function openIntervalModal(jobId, jobName, currentInterval) {
+        // Config modal
+        let currentStartHour = 7;
+        let currentEndHour = 20;
+
+        async function openConfigModal(jobId, jobName, currentInterval) {
             currentJobId = jobId;
             document.getElementById('modal-job-name').textContent = jobName;
             document.getElementById('interval-input').value = currentInterval;
-            document.getElementById('interval-modal').classList.add('active');
+
+            // Cargar horarios desde la API
+            try {
+                const res = await fetch(`/api/admin/jobs/${jobId}/details`);
+                const data = await res.json();
+                if (data.success && data.process_config) {
+                    currentStartHour = data.process_config.operating_start_hour || 7;
+                    currentEndHour = data.process_config.operating_end_hour || 20;
+                    document.getElementById('start-hour-input').value = currentStartHour;
+                    document.getElementById('end-hour-input').value = currentEndHour;
+                }
+            } catch (e) {
+                console.error('Error loading config:', e);
+            }
+
+            document.getElementById('config-modal').classList.add('active');
         }
 
-        function closeModal() {
-            document.getElementById('interval-modal').classList.remove('active');
+        // Alias for backward compatibility
+        function openIntervalModal(jobId, jobName, currentInterval) {
+            openConfigModal(jobId, jobName, currentInterval);
+        }
+
+        function closeConfigModal() {
+            document.getElementById('config-modal').classList.remove('active');
             currentJobId = null;
         }
 
-        async function saveInterval() {
+        function adjustInterval(delta) {
+            const input = document.getElementById('interval-input');
+            let value = parseInt(input.value) || 1;
+            value = Math.max(1, Math.min(1440, value + delta));
+            input.value = value;
+        }
+
+        function setInterval(minutes) {
+            document.getElementById('interval-input').value = minutes;
+        }
+
+        function setHours(start, end) {
+            document.getElementById('start-hour-input').value = start;
+            document.getElementById('end-hour-input').value = end;
+        }
+
+        async function saveConfig() {
             const minutes = parseInt(document.getElementById('interval-input').value);
+            const startHour = parseInt(document.getElementById('start-hour-input').value);
+            const endHour = parseInt(document.getElementById('end-hour-input').value);
+
             if (isNaN(minutes) || minutes < 1 || minutes > 1440) {
                 showSnackbar('Intervalo invalido (1-1440 min)', 'error');
+                return;
+            }
+
+            if (startHour >= endHour) {
+                showSnackbar('La hora de inicio debe ser menor a la hora de fin', 'error');
                 return;
             }
 
@@ -2029,20 +2338,25 @@
 
             try {
                 setLoading(true);
-                const res = await fetch(`/api/admin/jobs/${currentJobId}/interval?minutes=${minutes}`, { method: 'PUT' });
-                const data = await res.json();
 
-                if (res.ok && data.success) {
-                    closeModal();
-                    // Esperar un momento para que el servidor actualice
+                // Guardar intervalo
+                const intervalRes = await fetch(`/api/admin/jobs/${currentJobId}/interval?minutes=${minutes}`, { method: 'PUT' });
+                const intervalData = await intervalRes.json();
+
+                // Guardar horario
+                const hoursRes = await fetch(`/api/admin/jobs/${currentJobId}/operating-hours?start_hour=${startHour}&end_hour=${endHour}`, { method: 'PUT' });
+                const hoursData = await hoursRes.json();
+
+                if (intervalRes.ok && hoursRes.ok) {
+                    closeConfigModal();
                     await new Promise(resolve => setTimeout(resolve, 500));
                     await refreshAll();
-                    showSnackbar('Intervalo actualizado a ' + minutes + ' min', 'success');
+                    showSnackbar('Configuracion guardada correctamente', 'success');
                 } else {
-                    showSnackbar(data.detail || data.message || 'Error al guardar', 'error');
+                    showSnackbar(intervalData.detail || hoursData.detail || 'Error al guardar', 'error');
                 }
             } catch (e) {
-                console.error('Error saving interval:', e);
+                console.error('Error saving config:', e);
                 showSnackbar('Error de conexion al guardar', 'error');
             } finally {
                 setLoading(false);
