@@ -945,10 +945,59 @@
             color: var(--md-sys-color-on-error);
         }
 
-        /* ===== Responsive ===== */
+        /* ===== Responsive - Tablets ===== */
+        @media (max-width: 900px) {
+            .main-content {
+                padding: 16px 12px;
+            }
+
+            .stats-grid {
+                gap: 12px;
+            }
+
+            .stat-card {
+                padding: 16px;
+            }
+
+            .stat-value {
+                font-size: 1.5rem;
+            }
+
+            .stat-icon {
+                width: 40px;
+                height: 40px;
+            }
+        }
+
+        /* ===== Responsive - Phones ===== */
         @media (max-width: 600px) {
+            .top-app-bar {
+                padding: 10px 12px;
+            }
+
             .top-app-bar-content {
                 flex-wrap: wrap;
+                gap: 10px;
+            }
+
+            .app-bar-leading {
+                gap: 10px;
+            }
+
+            .logo-container {
+                padding: 4px 8px;
+            }
+
+            .logo-container img {
+                height: 24px;
+            }
+
+            .app-title h1 {
+                font-size: 1rem;
+            }
+
+            .app-title span {
+                font-size: 0.65rem;
             }
 
             .app-bar-trailing {
@@ -956,19 +1005,365 @@
                 justify-content: space-between;
             }
 
+            .connection-chip {
+                font-size: 0.75rem;
+                padding: 4px 10px;
+            }
+
+            .main-content {
+                padding: 12px 8px;
+            }
+
             .stats-grid {
                 grid-template-columns: 1fr 1fr;
+                gap: 8px;
+                margin-bottom: 16px;
+            }
+
+            .stat-card {
+                padding: 12px;
+                border-radius: 12px;
+            }
+
+            .stat-label {
+                font-size: 0.625rem;
+            }
+
+            .stat-value {
+                font-size: 1.25rem;
+            }
+
+            .stat-icon {
+                width: 36px;
+                height: 36px;
+                border-radius: 8px;
+            }
+
+            .stat-icon .material-icons {
+                font-size: 20px;
+            }
+
+            .content-grid {
+                gap: 16px;
+            }
+
+            .card {
+                border-radius: 12px;
+            }
+
+            .card-header {
+                padding: 12px 16px;
+            }
+
+            .card-title {
+                font-size: 0.875rem;
+            }
+
+            .card-content {
+                padding: 12px;
+            }
+
+            /* Job Card Mobile */
+            .job-card {
+                border-radius: 12px;
+            }
+
+            .job-card + .job-card {
+                margin-top: 12px;
+            }
+
+            .job-card-header {
+                padding: 12px 14px;
+                gap: 12px;
+            }
+
+            .job-icon {
+                width: 40px;
+                height: 40px;
+                border-radius: 10px;
+            }
+
+            .job-icon .material-icons {
+                font-size: 20px;
+            }
+
+            .job-name {
+                font-size: 0.875rem;
+            }
+
+            .job-description {
+                font-size: 0.7rem;
+                display: -webkit-box;
+                -webkit-line-clamp: 2;
+                -webkit-box-orient: vertical;
+                overflow: hidden;
+            }
+
+            .job-status-chip {
+                padding: 2px 8px;
+                font-size: 0.65rem;
+            }
+
+            .job-status-chip .material-icons {
+                font-size: 12px !important;
+            }
+
+            .job-meta {
+                padding: 10px 14px;
+                gap: 8px;
+            }
+
+            .job-meta-label {
+                font-size: 0.5625rem;
+            }
+
+            .job-meta-value {
+                font-size: 0.75rem;
+            }
+
+            .job-details-btn {
+                padding: 12px 16px;
+                font-size: 0.8rem;
+            }
+
+            .job-actions {
+                padding: 10px 14px;
+                gap: 6px;
+            }
+
+            .job-actions .btn {
+                flex: 1 1 calc(50% - 3px);
+                min-width: auto;
+                padding: 8px 12px;
+                font-size: 0.75rem;
+                gap: 4px;
+            }
+
+            .job-actions .btn .material-icons {
+                font-size: 18px;
+            }
+
+            .job-actions .btn-icon {
+                flex: 0 0 auto;
+                min-width: 36px;
+                min-height: 36px;
+                padding: 6px;
+            }
+
+            /* History Mobile */
+            .history-list {
+                max-height: 300px;
+            }
+
+            .history-item {
+                padding: 10px 0;
+                gap: 8px;
+            }
+
+            .history-job-name {
+                font-size: 0.8rem;
+            }
+
+            .history-timestamp {
+                font-size: 0.65rem;
+            }
+
+            .history-status {
+                padding: 3px 8px;
+                font-size: 0.65rem;
+                white-space: nowrap;
+            }
+
+            /* Modal Mobile */
+            .modal-overlay {
+                padding: 0;
+                align-items: flex-end;
+            }
+
+            .modal {
+                border-radius: 20px 20px 0 0;
+                max-height: 90vh;
+                width: 100%;
+                max-width: 100%;
+            }
+
+            .modal-header {
+                padding: 16px 16px 12px;
+            }
+
+            .modal-title {
+                font-size: 1.125rem;
+            }
+
+            .modal-subtitle {
+                font-size: 0.75rem;
+            }
+
+            .modal-body {
+                padding: 12px 16px;
+                max-height: 65vh;
+            }
+
+            .modal-footer {
+                padding: 12px 16px 20px;
+            }
+
+            .detail-section {
+                margin-bottom: 16px;
+            }
+
+            .detail-section-title {
+                font-size: 0.8rem;
+                margin-bottom: 8px;
             }
 
             .detail-grid {
                 grid-template-columns: 1fr;
+                gap: 12px;
+                padding: 12px;
             }
 
-            .modal {
-                border-radius: 16px 16px 0 0;
-                position: fixed;
-                bottom: 0;
-                max-height: 85vh;
+            .detail-grid .detail-item[style*="grid-column: span 2"] {
+                grid-column: span 1;
+            }
+
+            .detail-label {
+                font-size: 0.5625rem;
+            }
+
+            .detail-value {
+                font-size: 0.8rem;
+                word-break: break-all;
+            }
+
+            .process-step {
+                gap: 10px;
+            }
+
+            .step-number {
+                width: 20px;
+                height: 20px;
+                font-size: 0.65rem;
+            }
+
+            .step-text {
+                font-size: 0.8rem;
+            }
+
+            .field-chip {
+                padding: 4px 8px;
+                font-size: 0.65rem;
+            }
+
+            /* Snackbar Mobile */
+            .snackbar {
+                left: 12px;
+                right: 12px;
+                bottom: 12px;
+                transform: translateX(0) translateY(100px);
+                padding: 12px 16px;
+                font-size: 0.8rem;
+            }
+
+            .snackbar.show {
+                transform: translateX(0) translateY(0);
+            }
+
+            .snackbar .material-icons {
+                font-size: 20px;
+            }
+
+            /* Empty state mobile */
+            .empty-state {
+                padding: 24px 16px;
+            }
+
+            .empty-state .material-icons-outlined {
+                font-size: 36px;
+                margin-bottom: 12px;
+            }
+
+            .empty-state p {
+                font-size: 0.8rem;
+            }
+
+            /* Button adjustments */
+            .btn {
+                padding: 8px 16px;
+                font-size: 0.8rem;
+            }
+
+            .btn-icon {
+                min-width: 36px;
+                min-height: 36px;
+            }
+        }
+
+        /* ===== Responsive - Small Phones ===== */
+        @media (max-width: 380px) {
+            .app-title h1 {
+                font-size: 0.875rem;
+            }
+
+            .app-title span {
+                display: none;
+            }
+
+            .connection-chip span:last-child {
+                display: none;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .stat-card {
+                padding: 10px;
+            }
+
+            .stat-value {
+                font-size: 1.1rem;
+            }
+
+            .stat-icon {
+                width: 32px;
+                height: 32px;
+            }
+
+            .stat-icon .material-icons {
+                font-size: 18px;
+            }
+
+            .job-actions {
+                flex-direction: column;
+            }
+
+            .job-actions .btn {
+                flex: 1 1 100%;
+            }
+
+            .job-actions .btn-icon {
+                display: none;
+            }
+        }
+
+        /* ===== Touch improvements ===== */
+        @media (hover: none) and (pointer: coarse) {
+            .btn {
+                min-height: 44px;
+            }
+
+            .btn-icon {
+                min-width: 44px;
+                min-height: 44px;
+            }
+
+            .job-details-btn {
+                min-height: 48px;
+            }
+
+            .history-item {
+                min-height: 48px;
             }
         }
     </style>
