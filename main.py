@@ -210,8 +210,19 @@ async def run_invoice_processing(sheet_id: int, row_id: int):
     )
 
 
+def is_within_operating_hours() -> bool:
+    """Verifica si estamos dentro del horario operativo (7 AM - 8 PM CDMX)."""
+    now = datetime.now(CDMX_TZ)
+    return 7 <= now.hour < 20
+
+
 async def run_inventory_sync():
     """Ejecuta la sincronización de inventario."""
+    # Verificar horario operativo
+    if not is_within_operating_hours():
+        logger.info("Sincronización de inventario omitida - fuera de horario operativo (7 AM - 8 PM)")
+        return {"success": True, "skipped": True, "reason": "Fuera de horario operativo"}
+
     logger.info("Ejecutando sincronización programada de inventario...")
     try:
         # Obtener sheet_id desde la base de datos
@@ -233,6 +244,11 @@ async def run_inventory_sync():
 
 async def run_invoices_sync():
     """Ejecuta la sincronización de facturas Bind -> Smartsheet."""
+    # Verificar horario operativo
+    if not is_within_operating_hours():
+        logger.info("Sincronización de facturas omitida - fuera de horario operativo (7 AM - 8 PM)")
+        return {"success": True, "skipped": True, "reason": "Fuera de horario operativo"}
+
     logger.info("Ejecutando sincronización programada de facturas...")
     try:
         # Obtener sheet_id desde la base de datos
