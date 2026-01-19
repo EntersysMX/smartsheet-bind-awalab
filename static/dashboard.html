@@ -1,0 +1,1666 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Panel de Administracion - Smartsheet-Bind | AWALab</title>
+
+    <!-- Material Design 3 - Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
+    <style>
+        /* ===== AWALAB Brand Colors - Material Design 3 ===== */
+        :root {
+            /* Primary - Navy Blue (Awalab brand) */
+            --md-sys-color-primary: #003366;
+            --md-sys-color-on-primary: #ffffff;
+            --md-sys-color-primary-container: #d1e4ff;
+            --md-sys-color-on-primary-container: #001d36;
+
+            /* Secondary - Teal accent */
+            --md-sys-color-secondary: #00796b;
+            --md-sys-color-on-secondary: #ffffff;
+            --md-sys-color-secondary-container: #b2dfdb;
+            --md-sys-color-on-secondary-container: #00251e;
+
+            /* Tertiary - Amber for highlights */
+            --md-sys-color-tertiary: #f57c00;
+            --md-sys-color-on-tertiary: #ffffff;
+            --md-sys-color-tertiary-container: #ffe0b2;
+
+            /* Surface colors */
+            --md-sys-color-surface: #f8fafc;
+            --md-sys-color-surface-dim: #e2e8f0;
+            --md-sys-color-surface-container: #ffffff;
+            --md-sys-color-surface-container-high: #f1f5f9;
+            --md-sys-color-surface-container-highest: #e2e8f0;
+            --md-sys-color-on-surface: #1e293b;
+            --md-sys-color-on-surface-variant: #64748b;
+
+            /* Outline */
+            --md-sys-color-outline: #94a3b8;
+            --md-sys-color-outline-variant: #cbd5e1;
+
+            /* Status colors */
+            --md-sys-color-error: #dc2626;
+            --md-sys-color-on-error: #ffffff;
+            --md-sys-color-success: #16a34a;
+            --md-sys-color-on-success: #ffffff;
+            --md-sys-color-warning: #f59e0b;
+            --md-sys-color-on-warning: #000000;
+
+            /* Elevation */
+            --md-sys-elevation-1: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+            --md-sys-elevation-2: 0 3px 6px rgba(0,0,0,0.15), 0 2px 4px rgba(0,0,0,0.12);
+            --md-sys-elevation-3: 0 10px 20px rgba(0,0,0,0.15), 0 3px 6px rgba(0,0,0,0.10);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: var(--md-sys-color-surface);
+            color: var(--md-sys-color-on-surface);
+            min-height: 100vh;
+        }
+
+        /* ===== Top App Bar ===== */
+        .top-app-bar {
+            background: linear-gradient(135deg, var(--md-sys-color-primary) 0%, #004d99 100%);
+            color: var(--md-sys-color-on-primary);
+            padding: 12px 16px;
+            box-shadow: var(--md-sys-elevation-2);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .top-app-bar-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+        }
+
+        .app-bar-leading {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-container {
+            background: white;
+            border-radius: 8px;
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-container img {
+            height: 32px;
+            width: auto;
+        }
+
+        .app-title {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .app-title h1 {
+            font-size: 1.25rem;
+            font-weight: 500;
+            letter-spacing: 0.15px;
+        }
+
+        .app-title span {
+            font-size: 0.75rem;
+            opacity: 0.87;
+            font-weight: 400;
+        }
+
+        .app-bar-trailing {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .connection-chip {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255,255,255,0.15);
+            padding: 6px 12px;
+            border-radius: 16px;
+            font-size: 0.875rem;
+        }
+
+        .connection-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: var(--md-sys-color-success);
+        }
+
+        .connection-dot.error {
+            background: var(--md-sys-color-error);
+        }
+
+        .connection-dot.warning {
+            background: var(--md-sys-color-warning);
+        }
+
+        /* ===== Buttons ===== */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px 24px;
+            border-radius: 20px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            letter-spacing: 0.1px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            text-transform: none;
+        }
+
+        .btn-filled {
+            background-color: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+        }
+
+        .btn-filled:hover {
+            box-shadow: var(--md-sys-elevation-1);
+            filter: brightness(1.1);
+        }
+
+        .btn-filled:disabled {
+            background-color: var(--md-sys-color-outline-variant);
+            color: var(--md-sys-color-on-surface-variant);
+            cursor: not-allowed;
+        }
+
+        .btn-tonal {
+            background-color: var(--md-sys-color-secondary-container);
+            color: var(--md-sys-color-on-secondary-container);
+        }
+
+        .btn-tonal:hover {
+            box-shadow: var(--md-sys-elevation-1);
+        }
+
+        .btn-outlined {
+            background: transparent;
+            border: 1px solid var(--md-sys-color-outline);
+            color: var(--md-sys-color-primary);
+        }
+
+        .btn-outlined:hover {
+            background-color: rgba(0, 51, 102, 0.08);
+        }
+
+        .btn-text {
+            background: transparent;
+            color: var(--md-sys-color-primary);
+            padding: 10px 12px;
+        }
+
+        .btn-text:hover {
+            background-color: rgba(0, 51, 102, 0.08);
+        }
+
+        .btn-icon {
+            padding: 8px;
+            border-radius: 50%;
+            min-width: 40px;
+            min-height: 40px;
+        }
+
+        .btn-fab {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 56px;
+            height: 56px;
+            border-radius: 16px;
+            background-color: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+            box-shadow: var(--md-sys-elevation-3);
+        }
+
+        .btn-fab:hover {
+            box-shadow: var(--md-sys-elevation-3);
+            filter: brightness(0.95);
+        }
+
+        /* ===== Loading Indicator ===== */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(248, 250, 252, 0.9);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .loading-overlay.active {
+            display: flex;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--md-sys-color-primary-container);
+            border-top-color: var(--md-sys-color-primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 0.875rem;
+        }
+
+        /* Linear progress indicator */
+        .linear-progress {
+            position: fixed;
+            top: 64px;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--md-sys-color-primary-container);
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity 0.2s;
+            z-index: 99;
+        }
+
+        .linear-progress.active {
+            opacity: 1;
+        }
+
+        .linear-progress::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            width: 40%;
+            background: var(--md-sys-color-primary);
+            animation: indeterminate 1.5s infinite ease-in-out;
+        }
+
+        @keyframes indeterminate {
+            0% { left: -40%; }
+            100% { left: 100%; }
+        }
+
+        /* ===== Main Content ===== */
+        .main-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 24px 16px;
+        }
+
+        /* ===== Cards ===== */
+        .card {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 12px;
+            box-shadow: var(--md-sys-elevation-1);
+            overflow: hidden;
+        }
+
+        .card-elevated {
+            box-shadow: var(--md-sys-elevation-2);
+        }
+
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .card-content {
+            padding: 20px;
+        }
+
+        /* ===== Stats Grid ===== */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 16px;
+            padding: 20px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            box-shadow: var(--md-sys-elevation-1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--md-sys-elevation-2);
+        }
+
+        .stat-info {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: var(--md-sys-color-on-surface-variant);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            font-weight: 500;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .stat-value.success {
+            color: var(--md-sys-color-success);
+        }
+
+        .stat-value.error {
+            color: var(--md-sys-color-error);
+        }
+
+        .stat-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .stat-icon.primary {
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+        }
+
+        .stat-icon.secondary {
+            background: var(--md-sys-color-secondary-container);
+            color: var(--md-sys-color-on-secondary-container);
+        }
+
+        .stat-icon.tertiary {
+            background: var(--md-sys-color-tertiary-container);
+            color: var(--md-sys-color-tertiary);
+        }
+
+        .stat-icon.success {
+            background: rgba(22, 163, 74, 0.12);
+            color: var(--md-sys-color-success);
+        }
+
+        /* ===== Jobs Grid ===== */
+        .content-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 900px) {
+            .content-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* ===== Job Card ===== */
+        .job-card {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: var(--md-sys-elevation-1);
+            transition: all 0.3s ease;
+        }
+
+        .job-card:hover {
+            box-shadow: var(--md-sys-elevation-2);
+        }
+
+        .job-card-header {
+            padding: 16px 20px;
+            display: flex;
+            align-items: flex-start;
+            gap: 16px;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        }
+
+        .job-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .job-icon.invoices {
+            background: linear-gradient(135deg, var(--md-sys-color-primary) 0%, #004d99 100%);
+            color: white;
+        }
+
+        .job-icon.inventory {
+            background: linear-gradient(135deg, var(--md-sys-color-tertiary) 0%, #fb8c00 100%);
+            color: white;
+        }
+
+        .job-info {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .job-name {
+            font-size: 1rem;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface);
+            margin-bottom: 4px;
+        }
+
+        .job-description {
+            font-size: 0.75rem;
+            color: var(--md-sys-color-on-surface-variant);
+            line-height: 1.4;
+        }
+
+        .job-status-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .job-status-chip.active {
+            background: rgba(22, 163, 74, 0.12);
+            color: var(--md-sys-color-success);
+        }
+
+        .job-status-chip.paused {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--md-sys-color-warning);
+        }
+
+        .job-meta {
+            padding: 12px 20px;
+            background: var(--md-sys-color-surface-container-high);
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+        }
+
+        .job-meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .job-meta-label {
+            font-size: 0.625rem;
+            color: var(--md-sys-color-on-surface-variant);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .job-meta-value {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .job-details-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 14px 20px;
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+            width: 100%;
+        }
+
+        .job-details-btn:hover {
+            filter: brightness(1.1);
+        }
+
+        .job-details-btn.inventory {
+            background: var(--md-sys-color-tertiary);
+        }
+
+        .job-actions {
+            padding: 12px 20px;
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .job-actions .btn {
+            flex: 1;
+            min-width: 100px;
+        }
+
+        /* ===== History List ===== */
+        .history-list {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+
+        .history-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        }
+
+        .history-item:last-child {
+            border-bottom: none;
+        }
+
+        .history-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+
+        .history-job-name {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .history-timestamp {
+            font-size: 0.75rem;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        .history-status {
+            padding: 4px 12px;
+            border-radius: 16px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .history-status.completed {
+            background: rgba(22, 163, 74, 0.12);
+            color: var(--md-sys-color-success);
+        }
+
+        .history-status.failed {
+            background: rgba(220, 38, 38, 0.12);
+            color: var(--md-sys-color-error);
+        }
+
+        .history-status.manual_run {
+            background: var(--md-sys-color-primary-container);
+            color: var(--md-sys-color-on-primary-container);
+        }
+
+        .history-status.paused {
+            background: rgba(245, 158, 11, 0.12);
+            color: var(--md-sys-color-warning);
+        }
+
+        .history-status.resumed {
+            background: rgba(22, 163, 74, 0.12);
+            color: var(--md-sys-color-success);
+        }
+
+        .history-status.interval_changed {
+            background: var(--md-sys-color-secondary-container);
+            color: var(--md-sys-color-on-secondary-container);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+        }
+
+        .empty-state .material-icons-outlined {
+            font-size: 48px;
+            color: var(--md-sys-color-outline);
+            margin-bottom: 16px;
+        }
+
+        .empty-state p {
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 0.875rem;
+        }
+
+        /* ===== Modal / Dialog ===== */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 200;
+            padding: 16px;
+        }
+
+        .modal-overlay.active {
+            display: flex;
+        }
+
+        .modal {
+            background: var(--md-sys-color-surface-container);
+            border-radius: 28px;
+            max-width: 600px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: hidden;
+            box-shadow: var(--md-sys-elevation-3);
+            animation: modalIn 0.2s ease;
+        }
+
+        @keyframes modalIn {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        .modal-header {
+            padding: 24px 24px 16px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: space-between;
+            border-bottom: 1px solid var(--md-sys-color-outline-variant);
+        }
+
+        .modal-title {
+            font-size: 1.5rem;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .modal-subtitle {
+            font-size: 0.875rem;
+            color: var(--md-sys-color-on-surface-variant);
+            margin-top: 4px;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            color: var(--md-sys-color-on-surface-variant);
+            transition: background 0.2s;
+        }
+
+        .modal-close:hover {
+            background: var(--md-sys-color-surface-container-high);
+        }
+
+        .modal-body {
+            padding: 16px 24px;
+            max-height: 60vh;
+            overflow-y: auto;
+        }
+
+        .modal-footer {
+            padding: 16px 24px 24px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+
+        /* ===== Details Modal ===== */
+        .detail-section {
+            margin-bottom: 24px;
+        }
+
+        .detail-section-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--md-sys-color-primary);
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            background: var(--md-sys-color-surface-container-high);
+            padding: 16px;
+            border-radius: 12px;
+        }
+
+        .detail-item {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+
+        .detail-label {
+            font-size: 0.625rem;
+            color: var(--md-sys-color-on-surface-variant);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .detail-value {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--md-sys-color-on-surface);
+        }
+
+        .detail-value.mono {
+            font-family: 'Roboto Mono', monospace;
+            color: var(--md-sys-color-primary);
+        }
+
+        .detail-value.success {
+            color: var(--md-sys-color-success);
+        }
+
+        .process-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .process-step {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+
+        .step-number {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            background: var(--md-sys-color-primary);
+            color: var(--md-sys-color-on-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 500;
+            flex-shrink: 0;
+        }
+
+        .step-text {
+            font-size: 0.875rem;
+            color: var(--md-sys-color-on-surface-variant);
+            line-height: 1.5;
+            padding-top: 2px;
+        }
+
+        .fields-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .field-chip {
+            background: var(--md-sys-color-surface-container-high);
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            color: var(--md-sys-color-on-surface-variant);
+        }
+
+        /* ===== Input ===== */
+        .text-field {
+            position: relative;
+            margin-bottom: 16px;
+        }
+
+        .text-field input {
+            width: 100%;
+            padding: 16px;
+            border: 1px solid var(--md-sys-color-outline);
+            border-radius: 4px;
+            font-size: 1rem;
+            background: transparent;
+            color: var(--md-sys-color-on-surface);
+            transition: border-color 0.2s;
+        }
+
+        .text-field input:focus {
+            outline: none;
+            border-color: var(--md-sys-color-primary);
+            border-width: 2px;
+        }
+
+        .text-field label {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--md-sys-color-on-surface-variant);
+            font-size: 1rem;
+            pointer-events: none;
+            transition: all 0.2s;
+            background: var(--md-sys-color-surface-container);
+            padding: 0 4px;
+        }
+
+        .text-field input:focus + label,
+        .text-field input:not(:placeholder-shown) + label {
+            top: 0;
+            font-size: 0.75rem;
+            color: var(--md-sys-color-primary);
+        }
+
+        /* ===== Snackbar ===== */
+        .snackbar {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: var(--md-sys-color-on-surface);
+            color: var(--md-sys-color-surface);
+            padding: 14px 24px;
+            border-radius: 4px;
+            font-size: 0.875rem;
+            box-shadow: var(--md-sys-elevation-3);
+            z-index: 300;
+            opacity: 0;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .snackbar.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        .snackbar.success {
+            background: var(--md-sys-color-success);
+            color: var(--md-sys-color-on-success);
+        }
+
+        .snackbar.error {
+            background: var(--md-sys-color-error);
+            color: var(--md-sys-color-on-error);
+        }
+
+        /* ===== Responsive ===== */
+        @media (max-width: 600px) {
+            .top-app-bar-content {
+                flex-wrap: wrap;
+            }
+
+            .app-bar-trailing {
+                width: 100%;
+                justify-content: space-between;
+            }
+
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+
+            .detail-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .modal {
+                border-radius: 16px 16px 0 0;
+                position: fixed;
+                bottom: 0;
+                max-height: 85vh;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay">
+        <div class="spinner"></div>
+        <span class="loading-text">Actualizando datos...</span>
+    </div>
+
+    <!-- Linear Progress -->
+    <div id="linear-progress" class="linear-progress"></div>
+
+    <!-- Top App Bar -->
+    <header class="top-app-bar">
+        <div class="top-app-bar-content">
+            <div class="app-bar-leading">
+                <div class="logo-container">
+                    <img src="https://awalabdemexico.com/img/awalab_logo.png" alt="AWALab Logo" onerror="this.style.display='none'">
+                </div>
+                <div class="app-title">
+                    <h1>Smartsheet-Bind ERP</h1>
+                    <span>Panel de Administracion</span>
+                </div>
+            </div>
+            <div class="app-bar-trailing">
+                <div id="connection-status" class="connection-chip">
+                    <span class="connection-dot"></span>
+                    <span>Conectando...</span>
+                </div>
+                <button id="refresh-btn" class="btn btn-filled btn-icon" onclick="refreshAll()" title="Actualizar">
+                    <span class="material-icons">refresh</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="main-content">
+        <!-- Stats Grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="stat-label">Jobs Activos</span>
+                    <span id="stat-jobs" class="stat-value">-</span>
+                </div>
+                <div class="stat-icon primary">
+                    <span class="material-icons">schedule</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="stat-label">Bind ERP</span>
+                    <span id="stat-bind" class="stat-value">-</span>
+                </div>
+                <div id="bind-icon" class="stat-icon secondary">
+                    <span class="material-icons">cloud</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="stat-label">Smartsheet</span>
+                    <span id="stat-smartsheet" class="stat-value">-</span>
+                </div>
+                <div id="smartsheet-icon" class="stat-icon secondary">
+                    <span class="material-icons">table_chart</span>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-info">
+                    <span class="stat-label">Ejecuciones</span>
+                    <span id="stat-executions" class="stat-value">-</span>
+                </div>
+                <div class="stat-icon success">
+                    <span class="material-icons">check_circle</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Content Grid -->
+        <div class="content-grid">
+            <!-- Jobs Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="material-icons-outlined">sync</span>
+                        Procesos Programados
+                    </h2>
+                </div>
+                <div id="jobs-container" class="card-content">
+                    <div class="empty-state">
+                        <span class="material-icons-outlined">hourglass_empty</span>
+                        <p>Cargando procesos...</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- History Section -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">
+                        <span class="material-icons-outlined">history</span>
+                        Historial de Ejecuciones
+                    </h2>
+                </div>
+                <div class="card-content">
+                    <div id="history-container" class="history-list">
+                        <div class="empty-state">
+                            <span class="material-icons-outlined">hourglass_empty</span>
+                            <p>Cargando historial...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Interval Modal -->
+    <div id="interval-modal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <div>
+                    <h3 class="modal-title">Cambiar Intervalo</h3>
+                    <p id="modal-job-name" class="modal-subtitle"></p>
+                </div>
+                <button class="modal-close" onclick="closeModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <div class="text-field">
+                    <input type="number" id="interval-input" min="1" max="1440" placeholder=" ">
+                    <label>Intervalo (minutos)</label>
+                </div>
+                <p style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;">
+                    El intervalo define cada cuanto tiempo se ejecutara el proceso automaticamente.
+                    Minimo: 1 minuto, Maximo: 1440 minutos (24 horas).
+                </p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-text" onclick="closeModal()">Cancelar</button>
+                <button class="btn btn-filled" onclick="saveInterval()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div id="details-modal" class="modal-overlay">
+        <div class="modal" style="max-width: 700px;">
+            <div class="modal-header">
+                <div>
+                    <h3 id="details-title" class="modal-title">Detalles del Proceso</h3>
+                    <p id="details-subtitle" class="modal-subtitle"></p>
+                </div>
+                <button class="modal-close" onclick="closeDetailsModal()">
+                    <span class="material-icons">close</span>
+                </button>
+            </div>
+            <div class="modal-body">
+                <!-- Status -->
+                <div class="detail-section">
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 16px;">
+                        <span id="details-status" class="job-status-chip"></span>
+                        <span id="details-source" style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;"></span>
+                    </div>
+                </div>
+
+                <!-- Config Grid -->
+                <div class="detail-section">
+                    <h4 class="detail-section-title">
+                        <span class="material-icons-outlined">settings</span>
+                        Configuracion
+                    </h4>
+                    <div class="detail-grid">
+                        <div class="detail-item">
+                            <span class="detail-label">Intervalo</span>
+                            <span id="details-interval" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Proxima Ejecucion</span>
+                            <span id="details-next-run" class="detail-value"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Endpoint API</span>
+                            <span id="details-endpoint" class="detail-value mono"></span>
+                        </div>
+                        <div class="detail-item">
+                            <span class="detail-label">Smartsheet ID</span>
+                            <span id="details-sheet-id" class="detail-value mono"></span>
+                        </div>
+                        <div class="detail-item" style="grid-column: span 2;">
+                            <span class="detail-label">Hoja Smartsheet</span>
+                            <span id="details-sheet-name" class="detail-value success"></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Process Flow -->
+                <div class="detail-section">
+                    <h4 class="detail-section-title">
+                        <span class="material-icons-outlined">route</span>
+                        Flujo de Sincronizacion
+                    </h4>
+                    <div id="details-flow" class="process-steps">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Fields -->
+                <div class="detail-section">
+                    <h4 class="detail-section-title">
+                        <span class="material-icons-outlined">view_column</span>
+                        Campos Sincronizados
+                    </h4>
+                    <div id="details-fields" class="fields-chips">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Recent History -->
+                <div class="detail-section">
+                    <h4 class="detail-section-title">
+                        <span class="material-icons-outlined">history</span>
+                        Historial Reciente
+                    </h4>
+                    <div id="details-history">
+                        <p style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;">Sin historial</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-tonal" onclick="closeDetailsModal()">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Snackbar -->
+    <div id="snackbar" class="snackbar">
+        <span class="material-icons">info</span>
+        <span id="snackbar-text"></span>
+    </div>
+
+    <script>
+        let currentJobId = null;
+        let isLoading = false;
+
+        // Job metadata for details
+        const JOB_INFO = {
+            'sync_invoices': {
+                flow: [
+                    'Consulta facturas de los ultimos 10 minutos en Bind ERP (zona horaria CDMX)',
+                    'Obtiene el mapa UUID -> row_id de facturas existentes en Smartsheet',
+                    'UPSERT: Si UUID existe, actualiza fila; Si no, inserta nueva',
+                    'Ejecuta operaciones en lotes de 100 (optimizado para API Smartsheet)'
+                ],
+                fields: ['UUID', 'Serie', 'Folio', 'Fecha', 'Cliente', 'RFC', 'Subtotal', 'IVA', 'Total', 'Moneda', 'Uso CFDI', 'Metodo Pago', 'Estatus', 'Comentarios', 'Orden Compra', 'Bind ID']
+            },
+            'sync_inventory': {
+                flow: [
+                    'Consulta el inventario del almacen en Bind ERP',
+                    'Obtiene los productos existentes en la hoja de Smartsheet',
+                    'UPSERT: Actualiza existencias de productos ya registrados o inserta nuevos',
+                    'Registra la fecha/hora de ultima actualizacion'
+                ],
+                fields: ['ID Producto', 'Codigo', 'Nombre Producto', 'Descripcion', 'Existencias', 'Unidad', 'Precio Unitario', 'Almacen ID', 'Almacen Nombre', 'Ultima Actualizacion']
+            }
+        };
+
+        // Format date
+        function formatDate(isoString) {
+            if (!isoString) return '-';
+            const date = new Date(isoString);
+            return date.toLocaleString('es-MX', {
+                day: '2-digit',
+                month: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            });
+        }
+
+        // Show/hide loading
+        function setLoading(loading, useOverlay = false) {
+            isLoading = loading;
+            const overlay = document.getElementById('loading-overlay');
+            const progress = document.getElementById('linear-progress');
+            const refreshBtn = document.getElementById('refresh-btn');
+
+            if (loading) {
+                if (useOverlay) {
+                    overlay.classList.add('active');
+                } else {
+                    progress.classList.add('active');
+                }
+                refreshBtn.disabled = true;
+                refreshBtn.querySelector('.material-icons').style.animation = 'spin 1s linear infinite';
+            } else {
+                overlay.classList.remove('active');
+                progress.classList.remove('active');
+                refreshBtn.disabled = false;
+                refreshBtn.querySelector('.material-icons').style.animation = 'none';
+            }
+        }
+
+        // Show snackbar
+        function showSnackbar(message, type = 'info') {
+            const snackbar = document.getElementById('snackbar');
+            const text = document.getElementById('snackbar-text');
+            const icon = snackbar.querySelector('.material-icons');
+
+            text.textContent = message;
+            snackbar.className = 'snackbar ' + type;
+
+            if (type === 'success') icon.textContent = 'check_circle';
+            else if (type === 'error') icon.textContent = 'error';
+            else icon.textContent = 'info';
+
+            snackbar.classList.add('show');
+
+            setTimeout(() => {
+                snackbar.classList.remove('show');
+            }, 3000);
+        }
+
+        // Load stats
+        async function loadStats() {
+            try {
+                const res = await fetch('/api/admin/stats');
+                const data = await res.json();
+
+                document.getElementById('stat-jobs').textContent = data.scheduler.job_count;
+                document.getElementById('stat-executions').textContent = data.history.total;
+
+                // Bind status
+                const bindStatus = data.connections.bind;
+                const bindEl = document.getElementById('stat-bind');
+                const bindIcon = document.getElementById('bind-icon');
+                bindEl.textContent = bindStatus ? 'Conectado' : 'Error';
+                bindEl.className = 'stat-value ' + (bindStatus ? 'success' : 'error');
+
+                // Smartsheet status
+                const ssStatus = data.connections.smartsheet;
+                const ssEl = document.getElementById('stat-smartsheet');
+                const ssIcon = document.getElementById('smartsheet-icon');
+                ssEl.textContent = ssStatus ? 'Conectado' : 'Error';
+                ssEl.className = 'stat-value ' + (ssStatus ? 'success' : 'error');
+
+                // Connection status in header
+                const statusEl = document.getElementById('connection-status');
+                const allOk = bindStatus && ssStatus;
+                statusEl.innerHTML = `
+                    <span class="connection-dot ${allOk ? '' : (bindStatus || ssStatus ? 'warning' : 'error')}"></span>
+                    <span>${allOk ? 'Sistemas operativos' : 'Conexion parcial'}</span>
+                `;
+            } catch (e) {
+                console.error('Error loading stats:', e);
+            }
+        }
+
+        // Load jobs
+        async function loadJobs() {
+            try {
+                const res = await fetch('/api/admin/jobs');
+                const data = await res.json();
+
+                const container = document.getElementById('jobs-container');
+
+                if (data.jobs.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <span class="material-icons-outlined">event_busy</span>
+                            <p>No hay procesos configurados</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                container.innerHTML = data.jobs.map(job => {
+                    const isPaused = !job.next_run;
+                    const intervalMin = job.trigger.interval_minutes ? Math.round(job.trigger.interval_minutes) : '-';
+                    const isInvoices = job.id === 'sync_invoices';
+
+                    return `
+                        <div class="job-card">
+                            <div class="job-card-header">
+                                <div class="job-icon ${isInvoices ? 'invoices' : 'inventory'}">
+                                    <span class="material-icons">${isInvoices ? 'receipt_long' : 'inventory_2'}</span>
+                                </div>
+                                <div class="job-info">
+                                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                        <span class="job-name">${job.name}</span>
+                                        <span class="job-status-chip ${isPaused ? 'paused' : 'active'}">
+                                            <span class="material-icons" style="font-size: 14px;">${isPaused ? 'pause' : 'check_circle'}</span>
+                                            ${isPaused ? 'Pausado' : 'Activo'}
+                                        </span>
+                                    </div>
+                                    <p class="job-description">${job.description || ''}</p>
+                                    ${job.source ? `<p style="color: var(--md-sys-color-primary); font-size: 0.75rem; margin-top: 4px;">${job.source}</p>` : ''}
+                                </div>
+                            </div>
+
+                            <div class="job-meta">
+                                <div class="job-meta-item">
+                                    <span class="job-meta-label">Intervalo</span>
+                                    <span class="job-meta-value">${intervalMin} min</span>
+                                </div>
+                                <div class="job-meta-item">
+                                    <span class="job-meta-label">Proxima ejecucion</span>
+                                    <span class="job-meta-value">${formatDate(job.next_run)}</span>
+                                </div>
+                            </div>
+
+                            <button class="job-details-btn ${isInvoices ? '' : 'inventory'}" onclick="openDetailsModal('${job.id}')">
+                                <span class="material-icons">visibility</span>
+                                Ver Detalles del Proceso
+                            </button>
+
+                            <div class="job-actions">
+                                <button class="btn btn-tonal" onclick="runJob('${job.id}')">
+                                    <span class="material-icons">play_arrow</span>
+                                    Ejecutar
+                                </button>
+                                ${isPaused ? `
+                                    <button class="btn btn-outlined" style="border-color: var(--md-sys-color-success); color: var(--md-sys-color-success);" onclick="resumeJob('${job.id}')">
+                                        <span class="material-icons">play_circle</span>
+                                        Reanudar
+                                    </button>
+                                ` : `
+                                    <button class="btn btn-outlined" style="border-color: var(--md-sys-color-warning); color: var(--md-sys-color-warning);" onclick="pauseJob('${job.id}')">
+                                        <span class="material-icons">pause_circle</span>
+                                        Pausar
+                                    </button>
+                                `}
+                                <button class="btn btn-icon btn-text" onclick="openIntervalModal('${job.id}', '${job.name}', ${intervalMin})" title="Cambiar intervalo">
+                                    <span class="material-icons">timer</span>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                console.error('Error loading jobs:', e);
+                document.getElementById('jobs-container').innerHTML = `
+                    <div class="empty-state">
+                        <span class="material-icons-outlined">error_outline</span>
+                        <p>Error cargando procesos</p>
+                    </div>
+                `;
+            }
+        }
+
+        // Load history
+        async function loadHistory() {
+            try {
+                const res = await fetch('/api/admin/history?limit=20');
+                const data = await res.json();
+
+                const container = document.getElementById('history-container');
+
+                if (data.history.length === 0) {
+                    container.innerHTML = `
+                        <div class="empty-state">
+                            <span class="material-icons-outlined">schedule</span>
+                            <p>Sin ejecuciones registradas</p>
+                            <p style="font-size: 0.75rem; margin-top: 8px;">El historial aparecera cuando los procesos se ejecuten.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                const statusLabels = {
+                    'completed': 'Completado',
+                    'manual_run': 'Ejecutado',
+                    'paused': 'Pausado',
+                    'resumed': 'Reanudado',
+                    'interval_changed': 'Intervalo',
+                    'failed': 'Fallido',
+                };
+
+                container.innerHTML = data.history.map(entry => `
+                    <div class="history-item">
+                        <div class="history-info">
+                            <span class="history-job-name">${entry.job_name}</span>
+                            <span class="history-timestamp">${formatDate(entry.timestamp)}</span>
+                        </div>
+                        <span class="history-status ${entry.status}">
+                            ${statusLabels[entry.status] || entry.status}
+                        </span>
+                    </div>
+                `).join('');
+            } catch (e) {
+                console.error('Error loading history:', e);
+            }
+        }
+
+        // Job actions
+        async function runJob(jobId) {
+            try {
+                setLoading(true);
+                const res = await fetch(`/api/admin/jobs/${jobId}/run`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showSnackbar('Proceso iniciado correctamente', 'success');
+                    setTimeout(refreshAll, 1000);
+                }
+            } catch (e) {
+                showSnackbar('Error al ejecutar proceso', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function pauseJob(jobId) {
+            try {
+                setLoading(true);
+                const res = await fetch(`/api/admin/jobs/${jobId}/pause`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showSnackbar('Proceso pausado', 'success');
+                    refreshAll();
+                }
+            } catch (e) {
+                showSnackbar('Error al pausar proceso', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        async function resumeJob(jobId) {
+            try {
+                setLoading(true);
+                const res = await fetch(`/api/admin/jobs/${jobId}/resume`, { method: 'POST' });
+                const data = await res.json();
+                if (data.success) {
+                    showSnackbar('Proceso reanudado', 'success');
+                    refreshAll();
+                }
+            } catch (e) {
+                showSnackbar('Error al reanudar proceso', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Interval modal
+        function openIntervalModal(jobId, jobName, currentInterval) {
+            currentJobId = jobId;
+            document.getElementById('modal-job-name').textContent = jobName;
+            document.getElementById('interval-input').value = currentInterval;
+            document.getElementById('interval-modal').classList.add('active');
+        }
+
+        function closeModal() {
+            document.getElementById('interval-modal').classList.remove('active');
+            currentJobId = null;
+        }
+
+        async function saveInterval() {
+            const minutes = parseInt(document.getElementById('interval-input').value);
+            if (isNaN(minutes) || minutes < 1 || minutes > 1440) {
+                showSnackbar('Intervalo invalido (1-1440 min)', 'error');
+                return;
+            }
+
+            try {
+                setLoading(true);
+                const res = await fetch(`/api/admin/jobs/${currentJobId}/interval?minutes=${minutes}`, { method: 'PUT' });
+                const data = await res.json();
+                if (data.success) {
+                    showSnackbar('Intervalo actualizado', 'success');
+                    closeModal();
+                    refreshAll();
+                }
+            } catch (e) {
+                showSnackbar('Error al actualizar intervalo', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Details modal
+        async function openDetailsModal(jobId) {
+            const modal = document.getElementById('details-modal');
+            modal.classList.add('active');
+
+            try {
+                const res = await fetch(`/api/admin/jobs/${jobId}/details`);
+                const data = await res.json();
+
+                if (data.success) {
+                    const job = data.job;
+                    const config = data.process_config;
+                    const jobInfo = JOB_INFO[jobId] || { flow: [], fields: [] };
+
+                    document.getElementById('details-title').textContent = job.name;
+                    document.getElementById('details-subtitle').textContent = job.description;
+
+                    // Status
+                    const statusEl = document.getElementById('details-status');
+                    if (job.paused) {
+                        statusEl.textContent = 'Pausado';
+                        statusEl.className = 'job-status-chip paused';
+                    } else {
+                        statusEl.textContent = 'Activo';
+                        statusEl.className = 'job-status-chip active';
+                    }
+
+                    document.getElementById('details-source').textContent = job.source || '';
+
+                    // Config
+                    const intervalMin = job.trigger.interval_minutes ? Math.round(job.trigger.interval_minutes) : '-';
+                    document.getElementById('details-interval').textContent = intervalMin + ' minutos';
+                    document.getElementById('details-next-run').textContent = formatDate(job.next_run);
+                    document.getElementById('details-endpoint').textContent = job.endpoint || '-';
+                    document.getElementById('details-sheet-id').textContent = config?.smartsheet_sheet_id || '-';
+                    document.getElementById('details-sheet-name').textContent = config?.smartsheet_sheet_name || 'No configurado';
+
+                    // Flow
+                    document.getElementById('details-flow').innerHTML = jobInfo.flow.map((step, i) => `
+                        <div class="process-step">
+                            <span class="step-number">${i + 1}</span>
+                            <span class="step-text">${step}</span>
+                        </div>
+                    `).join('');
+
+                    // Fields
+                    document.getElementById('details-fields').innerHTML = jobInfo.fields.map(field => `
+                        <span class="field-chip">${field}</span>
+                    `).join('');
+
+                    // History
+                    const historyEl = document.getElementById('details-history');
+                    if (data.recent_history && data.recent_history.length > 0) {
+                        const statusLabels = {
+                            'completed': 'Completado',
+                            'manual_run': 'Ejecutado',
+                            'paused': 'Pausado',
+                            'resumed': 'Reanudado',
+                            'interval_changed': 'Intervalo',
+                            'failed': 'Fallido',
+                        };
+
+                        historyEl.innerHTML = data.recent_history.slice(0, 5).map(entry => `
+                            <div class="history-item" style="padding: 8px 0;">
+                                <span class="history-timestamp">${formatDate(entry.timestamp)}</span>
+                                <span class="history-status ${entry.status}">
+                                    ${statusLabels[entry.status] || entry.status}
+                                </span>
+                            </div>
+                        `).join('');
+                    } else {
+                        historyEl.innerHTML = '<p style="color: var(--md-sys-color-on-surface-variant); font-size: 0.875rem;">Sin historial de ejecuciones</p>';
+                    }
+                }
+            } catch (e) {
+                console.error('Error loading job details:', e);
+            }
+        }
+
+        function closeDetailsModal() {
+            document.getElementById('details-modal').classList.remove('active');
+        }
+
+        // Close modals on overlay click
+        document.querySelectorAll('.modal-overlay').forEach(overlay => {
+            overlay.addEventListener('click', (e) => {
+                if (e.target === overlay) {
+                    overlay.classList.remove('active');
+                }
+            });
+        });
+
+        // Refresh all
+        async function refreshAll() {
+            if (isLoading) return;
+
+            setLoading(true);
+            try {
+                await Promise.all([loadStats(), loadJobs(), loadHistory()]);
+            } catch (e) {
+                console.error('Error refreshing:', e);
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        // Auto refresh every 30 seconds
+        setInterval(refreshAll, 30000);
+
+        // Initial load
+        refreshAll();
+    </script>
+</body>
+</html>
