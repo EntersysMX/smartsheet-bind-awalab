@@ -2017,17 +2017,26 @@
                 return;
             }
 
+            if (!currentJobId) {
+                showSnackbar('Error: No se selecciono ningun proceso', 'error');
+                return;
+            }
+
             try {
                 setLoading(true);
                 const res = await fetch(`/api/admin/jobs/${currentJobId}/interval?minutes=${minutes}`, { method: 'PUT' });
                 const data = await res.json();
-                if (data.success) {
-                    showSnackbar('Intervalo actualizado', 'success');
+
+                if (res.ok && data.success) {
+                    showSnackbar('Intervalo actualizado a ' + minutes + ' min', 'success');
                     closeModal();
-                    refreshAll();
+                    await refreshAll();
+                } else {
+                    showSnackbar(data.detail || data.message || 'Error al guardar', 'error');
                 }
             } catch (e) {
-                showSnackbar('Error al actualizar intervalo', 'error');
+                console.error('Error saving interval:', e);
+                showSnackbar('Error de conexion al guardar', 'error');
             } finally {
                 setLoading(false);
             }
