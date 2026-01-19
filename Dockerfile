@@ -43,6 +43,9 @@ COPY business_logic.py .
 COPY database.py .
 COPY main.py .
 
+# Copiar archivos estáticos (dashboard)
+COPY static/ ./static/
+
 # Crear directorios para logs y datos, y dar permisos
 RUN mkdir -p /app/logs /app/data && chown -R appuser:appgroup /app
 
