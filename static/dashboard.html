@@ -1906,13 +1906,12 @@
 
         // Load history
         async function loadHistory() {
+            const container = document.getElementById('history-container');
             try {
                 const res = await fetch('/api/admin/history?limit=20');
                 const data = await res.json();
 
-                const container = document.getElementById('history-container');
-
-                if (data.history.length === 0) {
+                if (!data.history || data.history.length === 0) {
                     container.innerHTML = `
                         <div class="empty-state">
                             <span class="material-icons-outlined">schedule</span>
@@ -1935,7 +1934,7 @@
                 container.innerHTML = data.history.map(entry => `
                     <div class="history-item">
                         <div class="history-info">
-                            <span class="history-job-name">${entry.job_name}</span>
+                            <span class="history-job-name">${entry.job_name || entry.job_id}</span>
                             <span class="history-timestamp">${formatDate(entry.timestamp)}</span>
                         </div>
                         <span class="history-status ${entry.status}">
@@ -1945,6 +1944,12 @@
                 `).join('');
             } catch (e) {
                 console.error('Error loading history:', e);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <span class="material-icons-outlined">error_outline</span>
+                        <p>Error cargando historial</p>
+                    </div>
+                `;
             }
         }
 
