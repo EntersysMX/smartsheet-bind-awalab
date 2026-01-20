@@ -807,105 +807,103 @@ def sync_invoices_from_bind(
                 logger.warning(f"No se pudieron obtener detalles de factura {inv.get('ID')}: {e}")
                 products = []
 
-            # Extraer información de productos
-            if products:
-                # Concatenar códigos y nombres si hay múltiples productos
-                codigos_productos = " | ".join([p.get("Code", "") for p in products if p.get("Code")])
-                nombres_productos = " | ".join([p.get("Name", "") for p in products if p.get("Name")])
-                cantidad_total = sum([p.get("Qty", 0) for p in products])
-            else:
-                codigos_productos = ""
-                nombres_productos = ""
-                cantidad_total = 0
-
             # Formatear fecha de factura preservando zona horaria
             fecha_bind = inv.get("Date", "")
             if fecha_bind:
-                # Bind devuelve fechas en formato ISO, las convertimos a CDMX
                 try:
-                    # Parsear la fecha de Bind
                     if "T" in fecha_bind:
                         fecha_dt = datetime.fromisoformat(fecha_bind.replace("Z", "+00:00"))
                         if fecha_dt.tzinfo is None:
                             fecha_dt = fecha_dt.replace(tzinfo=cdmx_tz)
                         else:
                             fecha_dt = fecha_dt.astimezone(cdmx_tz)
-                        # Smartsheet DATE column requiere formato ISO (YYYY-MM-DD)
                         fecha_str = fecha_dt.strftime("%Y-%m-%d")
                     else:
                         fecha_str = fecha_bind[:10]
                 except Exception:
                     fecha_str = fecha_bind[:10] if fecha_bind else ""
             else:
-                fecha_str = None  # None para columnas DATE vacías
+                fecha_str = None
 
-            # Mapear campos de Bind a columnas de Smartsheet (estructura de 123 columnas)
-            # Las columnas principales están basadas en la hoja "Entregas - Logistica AWALAB"
+            # Datos comunes de la factura
             estatus = get_invoice_status(inv)
             moneda = "MXN" if "b7e2c065" in str(inv.get("CurrencyID", "")) else "USD"
             metodo_pago = "PUE" if inv.get("IsFiscalInvoice") else "PPD"
+            serie = inv.get("Serie", "").strip().rstrip("- ")  # Quitar guión y espacios finales
+            folio = str(inv.get("Number", ""))
+            numero_factura = f"{serie}-{folio}" if serie else folio  # Formato: AWAFAC-20260159
 
-            field_mapping = {
-                # Columna primaria - usar UUID como identificador único
-                "Nueva": uuid,
-                # Campos principales de factura
-                "Serie": inv.get("Serie", ""),
-                "No.": str(inv.get("Number", "")),
-                "Emision": fecha_str,
-                "Cliente": inv.get("ClientName", ""),
-                "RFC Cliente": inv.get("RFC", ""),
-                "Subtotal": inv.get("Subtotal", 0),
-                "I.V.A": inv.get("VAT", 0),
-                "Total": inv.get("Total", 0),
-                "Moneda": moneda,
-                "Folio Fiscal": uuid,
-                "Estatus": estatus,
-                # Campos adicionales
-                "Vendedor": inv.get("SellerName", ""),
-                "OrdenDeCompra": inv.get("PurchaseOrder", ""),
-                "Vencimiento": None,  # Se podría calcular según términos de pago
-                "Pendiente": inv.get("Balance", 0) if inv.get("Balance") else inv.get("Total", 0) if estatus == "Vigente" else 0,
-                "Pagos": inv.get("PaidAmount", 0),
-                # Campos duplicados para compatibilidad con estructura original
-                "Folio": str(inv.get("Number", "")),
-                "Fecha": fecha_str,
-                "RFC": inv.get("RFC", ""),
-                "IVA": inv.get("VAT", 0),
-                "Metodo Pago": metodo_pago,
-                "Orden Compra": inv.get("PurchaseOrder", ""),
-                # Campos de tracking
-                "Bind ID": inv.get("ID", ""),
-                "Ultima Sync": now_str,
-                # Campos de estado de pago
-                "Pagada": estatus == "Pagada",
-                "Cancelada": estatus == "Cancelada",
-                # Campos de productos/detalle
-                "Código Prod/Serv": codigos_productos,
-                "Producto/Concepto": nombres_productos,
-                "Cantidad Total": cantidad_total,
-            }
+            # Si no hay productos, crear una fila con los datos de la factura
+            if not products:
+                products = [{"Code": "", "Name": "", "Qty": 0, "Price": 0, "ID": "no-product"}]
 
-            # Crear celdas
-            cells = []
-            for field_name, value in field_mapping.items():
-                if field_name in column_map:
-                    cell = Cell()
-                    cell.column_id = column_map[field_name]
-                    cell.value = str(value) if value else ""
-                    cells.append(cell)
+            # Crear una fila por cada producto
+            for idx, product in enumerate(products):
+                # Identificador único: UUID + índice del producto
+                row_key = f"{uuid}-{idx}" if len(products) > 1 else uuid
 
-            if uuid in existing_map:
-                # ACTUALIZAR fila existente
-                row = Row()
-                row.id = existing_map[uuid]
-                row.cells = cells
-                rows_to_update.append(row)
-            else:
-                # INSERTAR nueva fila
-                row = Row()
-                row.to_top = True
-                row.cells = cells
-                rows_to_add.append(row)
+                field_mapping = {
+                    # Columna primaria - usar UUID + índice como identificador único
+                    "Nueva": row_key,
+                    # Campos principales de factura
+                    "Serie": serie,
+                    "No.": numero_factura,
+                    "Emision": fecha_str,
+                    "Cliente": inv.get("ClientName", ""),
+                    "RFC Cliente": inv.get("RFC", ""),
+                    "Subtotal": inv.get("Subtotal", 0),
+                    "I.V.A": inv.get("VAT", 0),
+                    "Total": inv.get("Total", 0),
+                    "Moneda": moneda,
+                    "Folio Fiscal": uuid,
+                    "Estatus": estatus,
+                    # Campos adicionales
+                    "Vendedor": inv.get("SellerName", ""),
+                    "OrdenDeCompra": inv.get("PurchaseOrder", ""),
+                    "Vencimiento": None,
+                    "Pendiente": inv.get("Balance", 0) if inv.get("Balance") else inv.get("Total", 0) if estatus == "Vigente" else 0,
+                    "Pagos": inv.get("PaidAmount", 0),
+                    # Campos duplicados para compatibilidad
+                    "Folio": folio,
+                    "Fecha": fecha_str,
+                    "RFC": inv.get("RFC", ""),
+                    "IVA": inv.get("VAT", 0),
+                    "Metodo Pago": metodo_pago,
+                    "Orden Compra": inv.get("PurchaseOrder", ""),
+                    # Campos de tracking
+                    "Bind ID": inv.get("ID", ""),
+                    "Ultima Sync": now_str,
+                    # Campos de estado de pago
+                    "Pagada": estatus == "Pagada",
+                    "Cancelada": estatus == "Cancelada",
+                    # Campos de producto (una fila por producto)
+                    "Código Prod/Serv": product.get("Code", ""),
+                    "Producto/Concepto": product.get("Name", ""),
+                    "Cantidad": product.get("Qty", 0),
+                    "Cantidad Total": product.get("Qty", 0),
+                }
+
+                # Crear celdas
+                cells = []
+                for field_name, value in field_mapping.items():
+                    if field_name in column_map:
+                        cell = Cell()
+                        cell.column_id = column_map[field_name]
+                        cell.value = str(value) if value is not None else ""
+                        cells.append(cell)
+
+                if row_key in existing_map:
+                    # ACTUALIZAR fila existente
+                    row = Row()
+                    row.id = existing_map[row_key]
+                    row.cells = cells
+                    rows_to_update.append(row)
+                else:
+                    # INSERTAR nueva fila
+                    row = Row()
+                    row.to_top = True
+                    row.cells = cells
+                    rows_to_add.append(row)
 
         # Ejecutar actualizaciones en lotes
         batch_size = 100
