@@ -2349,11 +2349,14 @@
 
                 if (intervalRes.ok && hoursRes.ok && intervalData.success && hoursData.success) {
                     closeConfigModal();
-                    showSnackbar('Guardando configuracion...', 'info');
-                    // Esperar mas tiempo para que el scheduler actualice
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    showSnackbar('Configuracion guardada, actualizando...', 'info');
+                    // Desactivar loading antes de refreshAll para que no sea bloqueado
+                    setLoading(false);
+                    // Esperar un momento para que el scheduler actualice
+                    await new Promise(resolve => setTimeout(resolve, 500));
                     await refreshAll();
                     showSnackbar('Configuracion guardada correctamente', 'success');
+                    return; // Salir del try para evitar el finally que resetea loading
                 } else {
                     const errorMsg = intervalData.detail || hoursData.detail || intervalData.message || hoursData.message || 'Error al guardar';
                     showSnackbar(errorMsg, 'error');
