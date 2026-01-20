@@ -677,6 +677,7 @@ def get_existing_invoices_map(
 ) -> dict[str, int]:
     """
     Obtiene un mapa de UUID -> row_id para facturas existentes en Smartsheet.
+    Busca en la columna primaria "Nueva" que contiene el UUID de la factura.
 
     Args:
         ss_service: Servicio Smartsheet
@@ -688,20 +689,24 @@ def get_existing_invoices_map(
     try:
         sheet = ss_service.client.Sheets.get_sheet(sheet_id)
 
+        # Buscar columna primaria "Nueva" o "Folio Fiscal" como fallback
         uuid_col_id = None
         for col in sheet.columns:
-            if col.title == "UUID":
+            if col.primary:  # La columna primaria contiene el UUID
                 uuid_col_id = col.id
                 break
+            if col.title in ("Nueva", "Folio Fiscal", "UUID"):
+                uuid_col_id = col.id
 
         if not uuid_col_id:
+            logger.warning("No se encontró columna con UUID en la hoja")
             return {}
 
         uuid_to_row = {}
         for row in sheet.rows:
             for cell in row.cells:
                 if cell.column_id == uuid_col_id and cell.value:
-                    uuid_to_row[cell.value] = row.id
+                    uuid_to_row[str(cell.value)] = row.id
 
         return uuid_to_row
     except Exception as e:
@@ -815,25 +820,46 @@ def sync_invoices_from_bind(
             else:
                 fecha_str = None  # None para columnas DATE vacías
 
-            # Mapear campos de Bind a columnas de Smartsheet
+            # Mapear campos de Bind a columnas de Smartsheet (estructura de 123 columnas)
+            # Las columnas principales están basadas en la hoja "Entregas - Logistica AWALAB"
+            estatus = get_invoice_status(inv)
+            moneda = "MXN" if "b7e2c065" in str(inv.get("CurrencyID", "")) else "USD"
+            metodo_pago = "PUE" if inv.get("IsFiscalInvoice") else "PPD"
+
             field_mapping = {
-                "UUID": uuid,
+                # Columna primaria - usar UUID como identificador único
+                "Nueva": uuid,
+                # Campos principales de factura
                 "Serie": inv.get("Serie", ""),
+                "No.": str(inv.get("Number", "")),
+                "Emision": fecha_str,
+                "Cliente": inv.get("ClientName", ""),
+                "RFC Cliente": inv.get("RFC", ""),
+                "Subtotal": inv.get("Subtotal", 0),
+                "I.V.A": inv.get("VAT", 0),
+                "Total": inv.get("Total", 0),
+                "Moneda": moneda,
+                "Folio Fiscal": uuid,
+                "Estatus": estatus,
+                # Campos adicionales
+                "Vendedor": inv.get("SellerName", ""),
+                "OrdenDeCompra": inv.get("PurchaseOrder", ""),
+                "Vencimiento": None,  # Se podría calcular según términos de pago
+                "Pendiente": inv.get("Balance", 0) if inv.get("Balance") else inv.get("Total", 0) if estatus == "Vigente" else 0,
+                "Pagos": inv.get("PaidAmount", 0),
+                # Campos duplicados para compatibilidad con estructura original
                 "Folio": str(inv.get("Number", "")),
                 "Fecha": fecha_str,
-                "Cliente": inv.get("ClientName", ""),
                 "RFC": inv.get("RFC", ""),
-                "Subtotal": f"${inv.get('Subtotal', 0):,.2f}",
-                "IVA": f"${inv.get('VAT', 0):,.2f}",
-                "Total": f"${inv.get('Total', 0):,.2f}",
-                "Moneda": "MXN" if "b7e2c065" in str(inv.get("CurrencyID", "")) else "USD",
-                "Uso CFDI": CFDI_USE_MAP.get(inv.get("CFDIUse", 0), "Desconocido"),
-                "Metodo Pago": "PUE" if inv.get("IsFiscalInvoice") else "PPD",
-                "Estatus": get_invoice_status(inv),
-                "Comentarios": (inv.get("Comments", "") or "")[:500],
+                "IVA": inv.get("VAT", 0),
+                "Metodo Pago": metodo_pago,
                 "Orden Compra": inv.get("PurchaseOrder", ""),
+                # Campos de tracking
                 "Bind ID": inv.get("ID", ""),
                 "Ultima Sync": now_str,
+                # Campos de estado de pago
+                "Pagada": estatus == "Pagada",
+                "Cancelada": estatus == "Cancelada",
             }
 
             # Crear celdas
