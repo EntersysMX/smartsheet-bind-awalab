@@ -799,6 +799,25 @@ def sync_invoices_from_bind(
                 logger.warning(f"Factura sin UUID ignorada: {inv.get('Number')}")
                 continue
 
+            # Obtener detalles de la factura (incluye productos)
+            try:
+                invoice_detail = bind_client.get_invoice(inv.get("ID"))
+                products = invoice_detail.get("Products", [])
+            except Exception as e:
+                logger.warning(f"No se pudieron obtener detalles de factura {inv.get('ID')}: {e}")
+                products = []
+
+            # Extraer información de productos
+            if products:
+                # Concatenar códigos y nombres si hay múltiples productos
+                codigos_productos = " | ".join([p.get("Code", "") for p in products if p.get("Code")])
+                nombres_productos = " | ".join([p.get("Name", "") for p in products if p.get("Name")])
+                cantidad_total = sum([p.get("Qty", 0) for p in products])
+            else:
+                codigos_productos = ""
+                nombres_productos = ""
+                cantidad_total = 0
+
             # Formatear fecha de factura preservando zona horaria
             fecha_bind = inv.get("Date", "")
             if fecha_bind:
@@ -860,6 +879,10 @@ def sync_invoices_from_bind(
                 # Campos de estado de pago
                 "Pagada": estatus == "Pagada",
                 "Cancelada": estatus == "Cancelada",
+                # Campos de productos/detalle
+                "Código Prod/Serv": codigos_productos,
+                "Producto/Concepto": nombres_productos,
+                "Cantidad Total": cantidad_total,
             }
 
             # Crear celdas
