@@ -112,32 +112,36 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Error verificando conexiones: {e}")
 
-    # Configurar scheduler para inventario
-    if settings.SYNC_INVENTORY_INTERVAL_MINUTES > 0:
+    # Configurar scheduler para inventario (leer intervalo de BD o usar default)
+    inventory_config = get_process_config("sync_inventory")
+    inventory_interval = inventory_config.interval_minutes if inventory_config else settings.SYNC_INVENTORY_INTERVAL_MINUTES
+    if inventory_interval > 0:
         scheduler.add_job(
             run_inventory_sync,
-            trigger=IntervalTrigger(minutes=settings.SYNC_INVENTORY_INTERVAL_MINUTES),
+            trigger=IntervalTrigger(minutes=inventory_interval),
             id="sync_inventory",
             name="Sincronización de Inventario",
             replace_existing=True,
         )
         logger.info(
-            f"Job de inventario configurado cada "
-            f"{settings.SYNC_INVENTORY_INTERVAL_MINUTES} minutos."
+            f"Job de inventario configurado cada {inventory_interval} minutos "
+            f"(desde {'BD' if inventory_config else 'default'})."
         )
 
-    # Configurar scheduler para facturas (Bind -> Smartsheet)
-    if settings.SYNC_INVOICES_INTERVAL_MINUTES > 0:
+    # Configurar scheduler para facturas (leer intervalo de BD o usar default)
+    invoices_config = get_process_config("sync_invoices")
+    invoices_interval = invoices_config.interval_minutes if invoices_config else settings.SYNC_INVOICES_INTERVAL_MINUTES
+    if invoices_interval > 0:
         scheduler.add_job(
             run_invoices_sync,
-            trigger=IntervalTrigger(minutes=settings.SYNC_INVOICES_INTERVAL_MINUTES),
+            trigger=IntervalTrigger(minutes=invoices_interval),
             id="sync_invoices",
             name="Sincronización de Facturas Bind -> Smartsheet",
             replace_existing=True,
         )
         logger.info(
-            f"Job de facturas configurado cada "
-            f"{settings.SYNC_INVOICES_INTERVAL_MINUTES} minutos."
+            f"Job de facturas configurado cada {invoices_interval} minutos "
+            f"(desde {'BD' if invoices_config else 'default'})."
         )
 
     # Iniciar scheduler si hay jobs configurados
