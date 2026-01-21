@@ -881,6 +881,8 @@ def sync_invoices_from_bind(
                     "Producto/Concepto": product.get("Name", ""),
                     "Cantidad": product.get("Qty", 0),
                     "Cantidad Total": product.get("Qty", 0),
+                    # Comentarios de la factura
+                    "Comentarios": invoice_detail.get("Comments", "") or "",
                 }
 
                 # Crear celdas
