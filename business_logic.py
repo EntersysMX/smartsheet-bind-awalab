@@ -808,24 +808,6 @@ def sync_invoices_from_bind(
                 invoice_detail = {}
                 products = []
 
-            # Buscar fecha de entrega desde la orden relacionada (por PurchaseOrder)
-            # Si no hay orden, usar la fecha de la factura
-            fecha_entrega = None
-            purchase_order = invoice_detail.get("PurchaseOrder", "")
-            if purchase_order:
-                try:
-                    orders_response = bind_client._request(
-                        "GET", "/Orders",
-                        params={"$filter": f"PurchaseOrder eq '{purchase_order}'"}
-                    )
-                    orders = orders_response.get("value", []) if isinstance(orders_response, dict) else orders_response
-                    if orders and len(orders) > 0:
-                        order_date = orders[0].get("OrderDate", "")
-                        if order_date:
-                            fecha_entrega = order_date[:10]  # Solo la fecha YYYY-MM-DD
-                except Exception as e:
-                    logger.debug(f"No se pudo obtener orden para PO {purchase_order}: {e}")
-
             # Formatear fecha de factura preservando zona horaria
             fecha_bind = inv.get("Date", "")
             if fecha_bind:
@@ -843,10 +825,6 @@ def sync_invoices_from_bind(
                     fecha_str = fecha_bind[:10] if fecha_bind else ""
             else:
                 fecha_str = None
-
-            # Si no se encontró fecha de entrega en la orden, usar fecha de factura
-            if not fecha_entrega and fecha_str:
-                fecha_entrega = fecha_str
 
             # Datos comunes de la factura
             estatus = get_invoice_status(inv)
@@ -906,8 +884,6 @@ def sync_invoices_from_bind(
                     "Cantidad Total": product.get("Qty", 0),
                     # Comentarios de la factura
                     "Comentarios": invoice_detail.get("Comments", "") or "",
-                    # Fecha de entrega (desde la orden relacionada)
-                    "Fecha de Entrega": fecha_entrega,
                 }
 
                 # Crear celdas
