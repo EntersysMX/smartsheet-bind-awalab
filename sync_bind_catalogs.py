@@ -4,7 +4,7 @@ Crea hojas con datos reales y las mantiene actualizadas.
 """
 
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Optional
 from zoneinfo import ZoneInfo
 
@@ -17,6 +17,9 @@ from config import settings
 logger = logging.getLogger(__name__)
 CDMX_TZ = ZoneInfo("America/Mexico_City")
 WORKSPACE_ID = 75095659046788
+
+# Días hacia atrás para filtrar registros con fecha (orders, quotes)
+DAYS_LOOKBACK = 7  # Solo registros de la última semana
 
 # Definición de catálogos a sincronizar
 CATALOG_CONFIGS = {
@@ -237,7 +240,9 @@ CATALOG_CONFIGS = {
     "orders": {
         "sheet_name": "Bind - Pedidos",
         "bind_method": "get_orders",
-        "max_records": 1000,
+        "max_records": 2000,
+        "filter_by_date": True,  # Filtrar por fecha para obtener solo recientes
+        "date_field": "OrderDate",  # Campo de fecha en Bind
         "columns": [
             {"title": "ID", "type": "TEXT_NUMBER", "width": 300},
             {"title": "Número", "type": "TEXT_NUMBER", "width": 100},
@@ -270,7 +275,9 @@ CATALOG_CONFIGS = {
     "quotes": {
         "sheet_name": "Bind - Cotizaciones",
         "bind_method": "get_quotes",
-        "max_records": 1000,
+        "max_records": 2000,
+        "filter_by_date": True,  # Filtrar por fecha para obtener solo recientes
+        "date_field": "CreationDate",  # Campo de fecha en Bind
         "columns": [
             {"title": "ID", "type": "TEXT_NUMBER", "width": 300},
             {"title": "Número", "type": "TEXT_NUMBER", "width": 100},
@@ -380,33 +387,45 @@ class BindCatalogSync:
     def _fetch_bind_data(self, catalog_name: str, config: dict) -> list:
         """Obtiene datos desde Bind ERP."""
         method_name = config["bind_method"]
+        max_records = config.get("max_records")
 
-        # Métodos especiales
-        method_map = {
-            "get_warehouses": lambda: self.bind_client._paginated_get("/Warehouses"),
-            "get_clients": lambda: self.bind_client._paginated_get("/Clients"),
-            "get_products": lambda: self.bind_client._paginated_get(
-                "/Products", max_records=config.get("max_records")
-            ),
-            "get_providers": lambda: self.bind_client._paginated_get(
-                "/Providers", max_records=config.get("max_records")
-            ),
-            "get_users": lambda: self.bind_client._paginated_get("/Users"),
-            "get_currencies": lambda: self.bind_client._paginated_get("/Currencies"),
-            "get_price_lists": lambda: self.bind_client._paginated_get("/PriceLists"),
-            "get_bank_accounts": lambda: self.bind_client._paginated_get("/BankAccounts"),
-            "get_banks": lambda: self.bind_client._paginated_get("/Banks"),
-            "get_locations": lambda: self.bind_client._paginated_get("/Locations"),
-            "get_orders": lambda: self.bind_client._paginated_get(
-                "/Orders", max_records=config.get("max_records")
-            ),
-            "get_quotes": lambda: self.bind_client._paginated_get(
-                "/Quotes", max_records=config.get("max_records")
-            ),
+        # Calcular filtro de fecha si aplica
+        date_filter = None
+        if config.get("filter_by_date") and config.get("date_field"):
+            since_date = datetime.now(CDMX_TZ) - timedelta(days=DAYS_LOOKBACK)
+            date_field = config["date_field"]
+            date_str = since_date.strftime("%Y-%m-%dT%H:%M:%S")
+            date_filter = f"{date_field} gt DateTime'{date_str}'"
+            logger.info(f"  Filtrando por {date_field} > {since_date.strftime('%Y-%m-%d')}")
+
+        # Construir params con filtro si existe
+        params = {}
+        if date_filter:
+            params["$filter"] = date_filter
+
+        # Mapeo de métodos a endpoints
+        endpoint_map = {
+            "get_warehouses": "/Warehouses",
+            "get_clients": "/Clients",
+            "get_products": "/Products",
+            "get_providers": "/Providers",
+            "get_users": "/Users",
+            "get_currencies": "/Currencies",
+            "get_price_lists": "/PriceLists",
+            "get_bank_accounts": "/BankAccounts",
+            "get_banks": "/Banks",
+            "get_locations": "/Locations",
+            "get_orders": "/Orders",
+            "get_quotes": "/Quotes",
         }
 
-        if method_name in method_map:
-            return method_map[method_name]()
+        if method_name in endpoint_map:
+            endpoint = endpoint_map[method_name]
+            return self.bind_client._paginated_get(
+                endpoint,
+                params=params if params else None,
+                max_records=max_records
+            )
         else:
             logger.error(f"Método no encontrado: {method_name}")
             return []
