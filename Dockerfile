@@ -41,6 +41,7 @@ COPY bind_client.py .
 COPY smartsheet_service.py .
 COPY business_logic.py .
 COPY database.py .
+COPY sync_bind_catalogs.py .
 COPY main.py .
 
 # Copiar archivos estáticos (dashboard)
