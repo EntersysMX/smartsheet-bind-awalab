@@ -384,19 +384,28 @@ class BindCatalogSync:
 
         return existing
 
-    def _fetch_bind_data(self, catalog_name: str, config: dict) -> list:
-        """Obtiene datos desde Bind ERP."""
+    def _fetch_bind_data(self, catalog_name: str, config: dict, use_date_filter: bool = True) -> list:
+        """Obtiene datos desde Bind ERP.
+
+        Args:
+            catalog_name: Nombre del catálogo
+            config: Configuración del catálogo
+            use_date_filter: Si True y el catálogo lo soporta, filtra por fecha.
+                           Si False, obtiene todos los registros (carga inicial).
+        """
         method_name = config["bind_method"]
         max_records = config.get("max_records")
 
-        # Calcular filtro de fecha si aplica
+        # Calcular filtro de fecha si aplica y está habilitado
         date_filter = None
-        if config.get("filter_by_date") and config.get("date_field"):
+        if use_date_filter and config.get("filter_by_date") and config.get("date_field"):
             since_date = datetime.now(CDMX_TZ) - timedelta(days=DAYS_LOOKBACK)
             date_field = config["date_field"]
             date_str = since_date.strftime("%Y-%m-%dT%H:%M:%S")
             date_filter = f"{date_field} gt DateTime'{date_str}'"
-            logger.info(f"  Filtrando por {date_field} > {since_date.strftime('%Y-%m-%d')}")
+            logger.info(f"  Filtrando por {date_field} > {since_date.strftime('%Y-%m-%d')} (últimos {DAYS_LOOKBACK} días)")
+        elif config.get("filter_by_date"):
+            logger.info(f"  Carga inicial: obteniendo TODOS los registros (sin filtro de fecha)")
 
         # Construir params con filtro si existe
         params = {}
@@ -430,8 +439,13 @@ class BindCatalogSync:
             logger.error(f"Método no encontrado: {method_name}")
             return []
 
-    def sync_catalog(self, catalog_name: str) -> dict:
-        """Sincroniza un catálogo específico."""
+    def sync_catalog(self, catalog_name: str, force_full_load: bool = False) -> dict:
+        """Sincroniza un catálogo específico.
+
+        Args:
+            catalog_name: Nombre del catálogo a sincronizar
+            force_full_load: Si True, obtiene todos los registros sin filtro de fecha
+        """
         if catalog_name not in CATALOG_CONFIGS:
             return {"success": False, "error": f"Catálogo desconocido: {catalog_name}"}
 
@@ -445,9 +459,23 @@ class BindCatalogSync:
 
             # Obtener filas existentes
             existing_rows = self._get_existing_rows(sheet_id, config["primary_key"])
+            existing_count = len(existing_rows)
+
+            # Determinar si usar filtro de fecha:
+            # - Si force_full_load=True, NO usar filtro (carga completa)
+            # - Si la hoja está vacía o tiene pocos registros (<10), NO usar filtro (carga inicial)
+            # - Si la hoja tiene datos, usar filtro (sincronización incremental)
+            use_date_filter = not force_full_load and existing_count >= 10
+
+            if existing_count < 10:
+                logger.info(f"  Hoja con {existing_count} registros - ejecutando CARGA INICIAL COMPLETA")
+            elif force_full_load:
+                logger.info(f"  Forzando carga completa (force_full_load=True)")
+            else:
+                logger.info(f"  Hoja con {existing_count} registros - sincronización INCREMENTAL")
 
             # Obtener datos de Bind
-            bind_data = self._fetch_bind_data(catalog_name, config)
+            bind_data = self._fetch_bind_data(catalog_name, config, use_date_filter=use_date_filter)
             logger.info(f"  Registros obtenidos de Bind: {len(bind_data)}")
 
             # Preparar timestamp
@@ -510,12 +538,15 @@ class BindCatalogSync:
                     self.ss_client.Sheets.update_rows(sheet_id, batch)
                     updated += len(batch)
 
-            logger.info(f"  Sincronización completada: {added} nuevos, {updated} actualizados")
+            sync_mode = "initial" if existing_count < 10 or force_full_load else "incremental"
+            logger.info(f"  Sincronización completada: {added} nuevos, {updated} actualizados (modo: {sync_mode})")
 
             return {
                 "success": True,
                 "catalog": catalog_name,
                 "sheet_id": sheet_id,
+                "sync_mode": sync_mode,
+                "existing_records": existing_count,
                 "total_records": len(bind_data),
                 "inserted": added,
                 "updated": updated,
@@ -534,10 +565,20 @@ class BindCatalogSync:
         return results
 
 
-def sync_bind_catalog(catalog_name: str) -> dict:
-    """Función pública para sincronizar un catálogo."""
+def sync_bind_catalog(catalog_name: str, force_full_load: bool = False) -> dict:
+    """Función pública para sincronizar un catálogo.
+
+    Args:
+        catalog_name: Nombre del catálogo a sincronizar
+        force_full_load: Si True, obtiene todos los registros ignorando el filtro de fecha
+
+    Comportamiento:
+        - Si la hoja tiene <10 registros: CARGA INICIAL (todos los datos)
+        - Si la hoja tiene >=10 registros: INCREMENTAL (solo últimos 7 días con UPSERT)
+        - Si force_full_load=True: CARGA COMPLETA (todos los datos, ignorando registros existentes)
+    """
     syncer = BindCatalogSync()
-    return syncer.sync_catalog(catalog_name)
+    return syncer.sync_catalog(catalog_name, force_full_load=force_full_load)
 
 
 def sync_all_bind_catalogs() -> dict:
