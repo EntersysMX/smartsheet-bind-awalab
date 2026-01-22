@@ -892,11 +892,27 @@ async def admin_get_job_details(job_id: str):
         trigger_info["interval_seconds"] = job.trigger.interval.total_seconds()
         trigger_info["interval_minutes"] = job.trigger.interval.total_seconds() / 60
 
+    # Mapeo de endpoints para jobs de catálogo
+    catalog_endpoints = {
+        "sync_catalog_warehouses": "GET /api/Warehouses",
+        "sync_catalog_clients": "GET /api/Clients",
+        "sync_catalog_products": "GET /api/Products",
+        "sync_catalog_providers": "GET /api/Providers",
+        "sync_catalog_users": "GET /api/Users",
+        "sync_catalog_currencies": "GET /api/Currencies",
+        "sync_catalog_pricelists": "GET /api/PriceLists",
+        "sync_catalog_bankaccounts": "GET /api/BankAccounts",
+        "sync_catalog_locations": "GET /api/Locations",
+        "sync_catalog_orders": "GET /api/Orders",
+        "sync_catalog_quotes": "GET /api/Quotes",
+    }
+
     # Usar valores de la base de datos como fallback si no hay metadatos hardcodeados
     description = metadata.get("description") or (db_config.description if db_config else "Sin descripción")
     source = metadata.get("source") or (f"{db_config.source_system} → {db_config.target_system}" if db_config and db_config.source_system else "")
     sheet_id = metadata.get("sheet_id") or (db_config.smartsheet_sheet_id if db_config else "")
     sheet_name = db_config.smartsheet_sheet_name if db_config else ""
+    endpoint = metadata.get("endpoint") or catalog_endpoints.get(job_id, "")
 
     # Generar details_html para jobs de catálogo si no hay uno hardcodeado
     if not metadata.get("details") and db_config:
@@ -953,7 +969,7 @@ async def admin_get_job_details(job_id: str):
             "description": description,
             "details_html": details_html,
             "source": source,
-            "endpoint": metadata.get("endpoint", ""),
+            "endpoint": endpoint,
             "sheet_var": metadata.get("sheet_var", ""),
             "sheet_id": sheet_id,
             "sheet_name": sheet_name,
