@@ -193,43 +193,91 @@ def delete_process_config(job_id: str) -> bool:
 
 
 def seed_default_configs():
-    """Crea las configuraciones por defecto de los procesos existentes."""
+    """Crea las configuraciones por defecto solo si no existen.
+
+    IMPORTANTE: Esta función NO sobrescribe configuraciones existentes
+    para preservar cambios hechos por el usuario (intervalos, horarios, etc.)
+    """
     from config import settings
 
-    # Proceso de sincronización de inventario
-    create_or_update_process_config(
-        job_id="sync_inventory",
-        name="Sincronización de Inventario",
-        description="Sincroniza el inventario desde Bind ERP hacia Smartsheet. Obtiene productos con existencias del almacén configurado y actualiza la hoja de inventario.",
-        smartsheet_sheet_id="346190987087748",
-        smartsheet_sheet_name="Registros Inventario Bind - Awalab",
-        interval_minutes=settings.SYNC_INVENTORY_INTERVAL_MINUTES,
-        is_active=True,
-        source_system="bind",
-        target_system="smartsheet",
-        sync_direction="pull",
-        fields_mapping={
-            "bind_fields": ["ProductID", "ProductCode", "ProductName", "Stock", "WarehouseID"],
-            "smartsheet_columns": ["ID Producto", "Código", "Nombre", "Existencias", "Almacén"],
-        },
-    )
+    db = SessionLocal()
+    try:
+        # Proceso de sincronización de inventario - solo crear si no existe
+        existing_inventory = db.query(ProcessConfig).filter(ProcessConfig.job_id == "sync_inventory").first()
+        if not existing_inventory:
+            create_or_update_process_config(
+                job_id="sync_inventory",
+                name="Sincronización de Inventario",
+                description="Sincroniza el inventario desde Bind ERP hacia Smartsheet. Obtiene productos con existencias del almacén configurado y actualiza la hoja de inventario.",
+                smartsheet_sheet_id="346190987087748",
+                smartsheet_sheet_name="Registros Inventario Bind - Awalab",
+                interval_minutes=settings.SYNC_INVENTORY_INTERVAL_MINUTES,
+                is_active=True,
+                source_system="bind",
+                target_system="smartsheet",
+                sync_direction="pull",
+                fields_mapping={
+                    "bind_fields": ["ProductID", "ProductCode", "ProductName", "Stock", "WarehouseID"],
+                    "smartsheet_columns": ["ID Producto", "Código", "Nombre", "Existencias", "Almacén"],
+                },
+            )
+            logger.info("Configuración de inventario creada")
+        else:
+            logger.info("Configuración de inventario existente preservada")
 
-    # Proceso de sincronización de facturas
-    create_or_update_process_config(
-        job_id="sync_invoices",
-        name="Sincronización de Facturas Bind -> Smartsheet",
-        description="Sincroniza facturas creadas en Bind ERP hacia Smartsheet. Obtiene facturas de los últimos 10 minutos y realiza UPSERT (actualiza existentes por UUID o inserta nuevas).",
-        smartsheet_sheet_id="4956740131966852",
-        smartsheet_sheet_name="Registros Facturas Bind - Awalab",
-        interval_minutes=settings.SYNC_INVOICES_INTERVAL_MINUTES,
-        is_active=True,
-        source_system="bind",
-        target_system="smartsheet",
-        sync_direction="pull",
-        fields_mapping={
-            "bind_fields": ["UUID", "Folio", "Date", "ClientRFC", "ClientName", "Total", "Status"],
-            "smartsheet_columns": ["UUID", "Folio", "Fecha", "RFC Cliente", "Nombre Cliente", "Total", "Estado"],
-        },
-    )
+        # Proceso de sincronización de facturas - solo crear si no existe
+        existing_invoices = db.query(ProcessConfig).filter(ProcessConfig.job_id == "sync_invoices").first()
+        if not existing_invoices:
+            create_or_update_process_config(
+                job_id="sync_invoices",
+                name="Sincronización de Facturas Bind -> Smartsheet",
+                description="Sincroniza facturas creadas en Bind ERP hacia Smartsheet. Obtiene facturas de los últimos 10 minutos y realiza UPSERT (actualiza existentes por UUID o inserta nuevas).",
+                smartsheet_sheet_id="4956740131966852",
+                smartsheet_sheet_name="Registros Facturas Bind - Awalab",
+                interval_minutes=settings.SYNC_INVOICES_INTERVAL_MINUTES,
+                is_active=True,
+                source_system="bind",
+                target_system="smartsheet",
+                sync_direction="pull",
+                fields_mapping={
+                    "bind_fields": ["UUID", "Folio", "Date", "ClientRFC", "ClientName", "Total", "Status"],
+                    "smartsheet_columns": ["UUID", "Folio", "Fecha", "RFC Cliente", "Nombre Cliente", "Total", "Estado"],
+                },
+            )
+            logger.info("Configuración de facturas creada")
+        else:
+            logger.info("Configuración de facturas existente preservada")
 
-    logger.info("Configuraciones por defecto creadas/actualizadas")
+        # Procesos de sincronización de catálogos Bind - cada 2 horas (120 min)
+        catalog_configs = [
+            ("sync_catalog_warehouses", "Sync Catálogo - Almacenes", "Sincroniza almacenes desde Bind ERP"),
+            ("sync_catalog_clients", "Sync Catálogo - Clientes", "Sincroniza clientes desde Bind ERP"),
+            ("sync_catalog_products", "Sync Catálogo - Productos", "Sincroniza productos desde Bind ERP"),
+            ("sync_catalog_providers", "Sync Catálogo - Proveedores", "Sincroniza proveedores desde Bind ERP"),
+            ("sync_catalog_users", "Sync Catálogo - Usuarios", "Sincroniza usuarios desde Bind ERP"),
+            ("sync_catalog_currencies", "Sync Catálogo - Monedas", "Sincroniza monedas y tipos de cambio"),
+            ("sync_catalog_pricelists", "Sync Catálogo - Listas de Precios", "Sincroniza listas de precios"),
+            ("sync_catalog_bankaccounts", "Sync Catálogo - Cuentas Bancarias", "Sincroniza cuentas bancarias"),
+            ("sync_catalog_locations", "Sync Catálogo - Ubicaciones", "Sincroniza ubicaciones/sucursales"),
+            ("sync_catalog_orders", "Sync Catálogo - Pedidos", "Sincroniza pedidos de venta"),
+            ("sync_catalog_quotes", "Sync Catálogo - Cotizaciones", "Sincroniza cotizaciones"),
+        ]
+
+        for job_id, name, description in catalog_configs:
+            existing = db.query(ProcessConfig).filter(ProcessConfig.job_id == job_id).first()
+            if not existing:
+                create_or_update_process_config(
+                    job_id=job_id,
+                    name=name,
+                    description=description,
+                    interval_minutes=120,  # Cada 2 horas
+                    is_active=True,
+                    operating_start_hour=6,
+                    operating_end_hour=22,
+                    source_system="bind",
+                    target_system="smartsheet",
+                    sync_direction="pull",
+                )
+                logger.info(f"Configuración de {job_id} creada")
+    finally:
+        db.close()

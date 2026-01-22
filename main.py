@@ -35,6 +35,7 @@ from business_logic import (
 from config import settings
 from smartsheet_service import SmartsheetService
 from database import init_db, seed_default_configs, get_process_config, get_all_process_configs, create_or_update_process_config, SessionLocal, ProcessConfig
+from sync_bind_catalogs import sync_bind_catalog
 
 # ========== CONFIGURACIÓN DE LOGGING ==========
 
@@ -143,6 +144,34 @@ async def lifespan(app: FastAPI):
             f"Job de facturas configurado cada {invoices_interval} minutos "
             f"(desde {'BD' if invoices_config else 'default'})."
         )
+
+    # Configurar scheduler para catálogos de Bind (cada 2 horas por default)
+    catalog_jobs = [
+        ("sync_catalog_warehouses", run_sync_warehouses, "Sync Catálogo - Almacenes"),
+        ("sync_catalog_clients", run_sync_clients, "Sync Catálogo - Clientes"),
+        ("sync_catalog_products", run_sync_products, "Sync Catálogo - Productos"),
+        ("sync_catalog_providers", run_sync_providers, "Sync Catálogo - Proveedores"),
+        ("sync_catalog_users", run_sync_users, "Sync Catálogo - Usuarios"),
+        ("sync_catalog_currencies", run_sync_currencies, "Sync Catálogo - Monedas"),
+        ("sync_catalog_pricelists", run_sync_pricelists, "Sync Catálogo - Listas de Precios"),
+        ("sync_catalog_bankaccounts", run_sync_bankaccounts, "Sync Catálogo - Cuentas Bancarias"),
+        ("sync_catalog_locations", run_sync_locations, "Sync Catálogo - Ubicaciones"),
+        ("sync_catalog_orders", run_sync_orders, "Sync Catálogo - Pedidos"),
+        ("sync_catalog_quotes", run_sync_quotes, "Sync Catálogo - Cotizaciones"),
+    ]
+
+    for job_id, job_func, job_name in catalog_jobs:
+        config = get_process_config(job_id)
+        if config and config.is_active:
+            interval = config.interval_minutes or 120
+            scheduler.add_job(
+                job_func,
+                trigger=IntervalTrigger(minutes=interval),
+                id=job_id,
+                name=job_name,
+                replace_existing=True,
+            )
+            logger.info(f"Job {job_id} configurado cada {interval} minutos")
 
     # Iniciar scheduler si hay jobs configurados
     if scheduler.get_jobs():
@@ -273,6 +302,61 @@ async def run_invoices_sync():
         logger.error(f"Error en sincronización de facturas: {e}")
         add_to_history("sync_invoices", "Sincronización de Facturas", "failed", {"error": str(e)})
         raise
+
+
+async def run_catalog_sync(catalog_name: str, job_id: str, job_name: str):
+    """Ejecuta la sincronización de un catálogo de Bind."""
+    # Verificar horario operativo
+    if not is_within_operating_hours(job_id):
+        logger.info(f"Sincronización de {catalog_name} omitida - fuera de horario operativo")
+        return {"success": True, "skipped": True, "reason": "Fuera de horario operativo"}
+
+    logger.info(f"Ejecutando sincronización de catálogo: {catalog_name}...")
+    try:
+        loop = asyncio.get_event_loop()
+        result = await loop.run_in_executor(None, lambda: sync_bind_catalog(catalog_name))
+        logger.info(f"Sincronización de {catalog_name} completada: {result}")
+        add_to_history(job_id, job_name, "completed" if result.get("success") else "failed", result)
+        return result
+    except Exception as e:
+        logger.error(f"Error en sincronización de {catalog_name}: {e}")
+        add_to_history(job_id, job_name, "failed", {"error": str(e)})
+        raise
+
+
+# Funciones específicas para cada catálogo (necesarias para el scheduler)
+async def run_sync_warehouses():
+    return await run_catalog_sync("warehouses", "sync_catalog_warehouses", "Sync Catálogo - Almacenes")
+
+async def run_sync_clients():
+    return await run_catalog_sync("clients", "sync_catalog_clients", "Sync Catálogo - Clientes")
+
+async def run_sync_products():
+    return await run_catalog_sync("products", "sync_catalog_products", "Sync Catálogo - Productos")
+
+async def run_sync_providers():
+    return await run_catalog_sync("providers", "sync_catalog_providers", "Sync Catálogo - Proveedores")
+
+async def run_sync_users():
+    return await run_catalog_sync("users", "sync_catalog_users", "Sync Catálogo - Usuarios")
+
+async def run_sync_currencies():
+    return await run_catalog_sync("currencies", "sync_catalog_currencies", "Sync Catálogo - Monedas")
+
+async def run_sync_pricelists():
+    return await run_catalog_sync("pricelists", "sync_catalog_pricelists", "Sync Catálogo - Listas de Precios")
+
+async def run_sync_bankaccounts():
+    return await run_catalog_sync("bankaccounts", "sync_catalog_bankaccounts", "Sync Catálogo - Cuentas Bancarias")
+
+async def run_sync_locations():
+    return await run_catalog_sync("locations", "sync_catalog_locations", "Sync Catálogo - Ubicaciones")
+
+async def run_sync_orders():
+    return await run_catalog_sync("orders", "sync_catalog_orders", "Sync Catálogo - Pedidos")
+
+async def run_sync_quotes():
+    return await run_catalog_sync("quotes", "sync_catalog_quotes", "Sync Catálogo - Cotizaciones")
 
 
 def verify_smartsheet_signature(
@@ -754,15 +838,22 @@ async def admin_list_jobs():
             trigger_info["interval_seconds"] = job.trigger.interval.total_seconds()
             trigger_info["interval_minutes"] = job.trigger.interval.total_seconds() / 60
 
-        # Obtener metadatos del job
+        # Obtener metadatos del job (primero de JOB_METADATA, luego de DB como fallback)
         metadata = JOB_METADATA.get(job.id, {})
         last_run = job_last_run.get(job.id, {})
+
+        # Si no hay metadatos hardcodeados, leer de la base de datos
+        db_config = get_process_config(job.id)
+        description = metadata.get("description") or (db_config.description if db_config else "")
+        source = metadata.get("source") or (f"{db_config.source_system} → {db_config.target_system}" if db_config and db_config.source_system else "")
+        sheet_id = metadata.get("sheet_id") or (db_config.smartsheet_sheet_id if db_config else "")
 
         jobs.append({
             "id": job.id,
             "name": job.name,
-            "description": metadata.get("description", ""),
-            "source": metadata.get("source", ""),
+            "description": description,
+            "source": source,
+            "sheet_id": sheet_id,
             "next_run": job.next_run_time.isoformat() if job.next_run_time else None,
             "trigger": trigger_info,
             "pending": job.pending,
@@ -801,16 +892,71 @@ async def admin_get_job_details(job_id: str):
         trigger_info["interval_seconds"] = job.trigger.interval.total_seconds()
         trigger_info["interval_minutes"] = job.trigger.interval.total_seconds() / 60
 
+    # Usar valores de la base de datos como fallback si no hay metadatos hardcodeados
+    description = metadata.get("description") or (db_config.description if db_config else "Sin descripción")
+    source = metadata.get("source") or (f"{db_config.source_system} → {db_config.target_system}" if db_config and db_config.source_system else "")
+    sheet_id = metadata.get("sheet_id") or (db_config.smartsheet_sheet_id if db_config else "")
+    sheet_name = db_config.smartsheet_sheet_name if db_config else ""
+
+    # Generar details_html para jobs de catálogo si no hay uno hardcodeado
+    if not metadata.get("details") and db_config:
+        details_html = f"""
+<div class="space-y-4">
+    <div class="bg-purple-900/30 border border-purple-700 rounded-lg p-4">
+        <h4 class="font-semibold text-purple-300 mb-2 flex items-center">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            ¿Qué hace este proceso?
+        </h4>
+        <p class="text-gray-300">{db_config.description or 'Sincroniza datos desde Bind ERP hacia Smartsheet.'}</p>
+    </div>
+
+    <div class="bg-gray-700/30 rounded-lg p-4">
+        <h4 class="font-semibold mb-3 flex items-center text-cyan-400">
+            <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+            </svg>
+            Configuración
+        </h4>
+        <div class="space-y-2 text-sm">
+            <div class="flex flex-col sm:flex-row sm:justify-between">
+                <span class="text-gray-400">Hoja Smartsheet:</span>
+                <span class="font-mono text-blue-400">{db_config.smartsheet_sheet_id or 'No configurado'}</span>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:justify-between">
+                <span class="text-gray-400">Nombre Hoja:</span>
+                <span class="text-gray-300">{db_config.smartsheet_sheet_name or 'No configurado'}</span>
+            </div>
+            {"<div class='flex flex-col sm:flex-row sm:justify-between'><span class='text-gray-400'>URL Smartsheet:</span><a href='https://app.smartsheet.com/sheets/" + db_config.smartsheet_sheet_id + "' target='_blank' class='text-blue-400 hover:underline truncate'>Abrir hoja ↗</a></div>" if db_config.smartsheet_sheet_id else ""}
+            <div class="flex flex-col sm:flex-row sm:justify-between">
+                <span class="text-gray-400">Dirección:</span>
+                <span class="text-green-400">{db_config.source_system} → {db_config.target_system}</span>
+            </div>
+            <div class="flex flex-col sm:flex-row sm:justify-between">
+                <span class="text-gray-400">Horario operación:</span>
+                <span class="text-gray-300">{db_config.operating_start_hour or 7}:00 - {db_config.operating_end_hour or 20}:00 (CDMX)</span>
+            </div>
+        </div>
+    </div>
+</div>
+"""
+    else:
+        details_html = metadata.get("details", "<p>Sin detalles disponibles</p>")
+
     return {
         "success": True,
         "job": {
             "id": job.id,
             "name": job.name,
-            "description": metadata.get("description", "Sin descripción"),
-            "details_html": metadata.get("details", "<p>Sin detalles disponibles</p>"),
-            "source": metadata.get("source", ""),
+            "description": description,
+            "details_html": details_html,
+            "source": source,
             "endpoint": metadata.get("endpoint", ""),
             "sheet_var": metadata.get("sheet_var", ""),
+            "sheet_id": sheet_id,
+            "sheet_name": sheet_name,
             "next_run": job.next_run_time.isoformat() if job.next_run_time else None,
             "trigger": trigger_info,
             "pending": job.pending,
@@ -875,14 +1021,28 @@ async def admin_run_job_now(job_id: str, background_tasks: BackgroundTasks):
     if not job:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' no encontrado")
 
-    # Ejecutar según el tipo de job
-    if job_id == "sync_inventory":
-        background_tasks.add_task(run_inventory_sync)
-    elif job_id == "sync_invoices":
-        background_tasks.add_task(run_invoices_sync)
-    else:
+    # Mapeo de job_id a función de ejecución
+    job_runners = {
+        "sync_inventory": run_inventory_sync,
+        "sync_invoices": run_invoices_sync,
+        "sync_catalog_warehouses": run_sync_warehouses,
+        "sync_catalog_clients": run_sync_clients,
+        "sync_catalog_products": run_sync_products,
+        "sync_catalog_providers": run_sync_providers,
+        "sync_catalog_users": run_sync_users,
+        "sync_catalog_currencies": run_sync_currencies,
+        "sync_catalog_pricelists": run_sync_pricelists,
+        "sync_catalog_bankaccounts": run_sync_bankaccounts,
+        "sync_catalog_locations": run_sync_locations,
+        "sync_catalog_orders": run_sync_orders,
+        "sync_catalog_quotes": run_sync_quotes,
+    }
+
+    runner = job_runners.get(job_id)
+    if not runner:
         raise HTTPException(status_code=400, detail=f"Job '{job_id}' no puede ejecutarse manualmente")
 
+    background_tasks.add_task(runner)
     add_to_history(job_id, job.name, "manual_run")
     logger.info(f"Job '{job_id}' ejecutado manualmente")
 
@@ -904,6 +1064,18 @@ async def admin_update_interval(job_id: str, minutes: int):
     job = scheduler.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' no encontrado")
+
+    # Actualizar en base de datos
+    db = SessionLocal()
+    try:
+        config = db.query(ProcessConfig).filter(ProcessConfig.job_id == job_id).first()
+        if config:
+            config.interval_minutes = minutes
+            config.updated_at = datetime.now(CDMX_TZ)
+            db.commit()
+            logger.info(f"Intervalo de '{job_id}' actualizado en BD a {minutes} minutos")
+    finally:
+        db.close()
 
     # Reschedular con nuevo intervalo
     scheduler.reschedule_job(job_id, trigger=IntervalTrigger(minutes=minutes))
