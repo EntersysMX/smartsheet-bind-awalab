@@ -303,6 +303,161 @@ CATALOG_CONFIGS = {
         },
         "primary_key": "ID",
     },
+    "categories": {
+        "sheet_name": "Bind - Categorías",
+        "bind_method": "get_categories",
+        "columns": [
+            {"title": "ID", "type": "TEXT_NUMBER", "width": 300},
+            {"title": "Nombre", "type": "TEXT_NUMBER", "width": 200},
+            {"title": "Nivel", "type": "TEXT_NUMBER", "width": 80},
+            {"title": "Categoría Padre", "type": "TEXT_NUMBER", "width": 200},
+            {"title": "ID Padre", "type": "TEXT_NUMBER", "width": 300},
+            {"title": "Última Actualización", "type": "TEXT_NUMBER", "width": 150},
+        ],
+        "field_mapping": {
+            "ID": "ID",
+            "Nombre": "Name",
+            "Nivel": "Level",
+            "Categoría Padre": "ParentName",
+            "ID Padre": "ParentID",
+        },
+        "primary_key": "ID",
+        "flatten_hierarchy": True,  # Aplanar estructura jerárquica
+    },
+    "accounts": {
+        "sheet_name": "Bind - Cuentas Contables",
+        "bind_method": "get_accounts",
+        "columns": [
+            {"title": "ID", "type": "TEXT_NUMBER", "width": 300},
+            {"title": "Número", "type": "TEXT_NUMBER", "width": 120},
+            {"title": "Descripción", "type": "TEXT_NUMBER", "width": 250},
+            {"title": "Grupo Principal", "type": "TEXT_NUMBER", "width": 150},
+            {"title": "Grupo", "type": "TEXT_NUMBER", "width": 150},
+            {"title": "Subgrupo", "type": "TEXT_NUMBER", "width": 150},
+            {"title": "Última Actualización", "type": "TEXT_NUMBER", "width": 150},
+        ],
+        "field_mapping": {
+            "ID": "ID",
+            "Número": "Number",
+            "Descripción": "Description",
+            "Grupo Principal": "GLGroup",
+            "Grupo": "Group",
+            "Subgrupo": "SubGroup",
+        },
+        "primary_key": "ID",
+    },
+    "accounting_journals": {
+        "sheet_name": "Bind - Pólizas Contables",
+        "bind_method": "get_accounting_journals",
+        "max_records": 2000,
+        "filter_by_date": True,
+        "date_field": "ApplicationDate",
+        "columns": [
+            {"title": "ID", "type": "TEXT_NUMBER", "width": 300},
+            {"title": "Número", "type": "TEXT_NUMBER", "width": 100},
+            {"title": "Tipo", "type": "TEXT_NUMBER", "width": 100},
+            {"title": "Fecha Aplicación", "type": "TEXT_NUMBER", "width": 150},
+            {"title": "Fecha Creación", "type": "TEXT_NUMBER", "width": 150},
+            {"title": "Tipo Período", "type": "TEXT_NUMBER", "width": 100},
+            {"title": "Última Actualización", "type": "TEXT_NUMBER", "width": 150},
+        ],
+        "field_mapping": {
+            "ID": "ID",
+            "Número": "Number",
+            "Tipo": "Type",
+            "Fecha Aplicación": "ApplicationDate",
+            "Fecha Creación": "CreationDate",
+            "Tipo Período": "PeriodType",
+        },
+        "primary_key": "ID",
+    },
+    "webhooks": {
+        "sheet_name": "Bind - WebHooks Disponibles",
+        "bind_method": "get_webhooks",
+        "columns": [
+            {"title": "ID", "type": "TEXT_NUMBER", "width": 200},
+            {"title": "Nombre Evento", "type": "TEXT_NUMBER", "width": 200},
+            {"title": "Descripción", "type": "TEXT_NUMBER", "width": 300},
+            {"title": "Última Actualización", "type": "TEXT_NUMBER", "width": 150},
+        ],
+        "field_mapping": {
+            "ID": "ID",
+            "Nombre Evento": "EventName",
+            "Descripción": "EventDescription",
+        },
+        "primary_key": "ID",
+    },
+    "webhook_subscriptions": {
+        "sheet_name": "Bind - Suscripciones WebHooks",
+        "bind_method": "get_webhook_subscriptions",
+        "columns": [
+            {"title": "ID", "type": "TEXT_NUMBER", "width": 300},
+            {"title": "Evento", "type": "TEXT_NUMBER", "width": 150},
+            {"title": "Nombre Evento", "type": "TEXT_NUMBER", "width": 150},
+            {"title": "URL Destino", "type": "TEXT_NUMBER", "width": 400},
+            {"title": "Última Actualización", "type": "TEXT_NUMBER", "width": 150},
+        ],
+        "field_mapping": {
+            "ID": "ID",
+            "Evento": "EventID",
+            "Nombre Evento": "EventName",
+            "URL Destino": "TargetURL",
+        },
+        "primary_key": "ID",
+    },
+    "account_categories": {
+        "sheet_name": "Bind - Catálogo Cuentas SAT",
+        "bind_method": "get_account_categories",
+        "columns": [
+            {"title": "ID", "type": "TEXT_NUMBER", "width": 300},
+            {"title": "Código", "type": "TEXT_NUMBER", "width": 120},
+            {"title": "Nombre", "type": "TEXT_NUMBER", "width": 300},
+            {"title": "Última Actualización", "type": "TEXT_NUMBER", "width": 150},
+        ],
+        "field_mapping": {
+            "ID": "ID",
+            "Código": "Code",
+            "Nombre": "Name",
+        },
+        "primary_key": "ID",
+    },
+    "invoices": {
+        "sheet_name": "Bind - Facturas",
+        "bind_method": "get_invoices",
+        "max_records": 2000,
+        "filter_by_date": True,
+        "date_field": "Date",
+        "columns": [
+            {"title": "ID", "type": "TEXT_NUMBER", "width": 300},
+            {"title": "UUID", "type": "TEXT_NUMBER", "width": 300},
+            {"title": "Serie", "type": "TEXT_NUMBER", "width": 100},
+            {"title": "Número", "type": "TEXT_NUMBER", "width": 100},
+            {"title": "Fecha", "type": "TEXT_NUMBER", "width": 150},
+            {"title": "Cliente", "type": "TEXT_NUMBER", "width": 200},
+            {"title": "RFC", "type": "TEXT_NUMBER", "width": 130},
+            {"title": "Subtotal", "type": "TEXT_NUMBER", "width": 120},
+            {"title": "IVA", "type": "TEXT_NUMBER", "width": 100},
+            {"title": "Total", "type": "TEXT_NUMBER", "width": 120},
+            {"title": "Orden Compra", "type": "TEXT_NUMBER", "width": 150},
+            {"title": "Estado", "type": "TEXT_NUMBER", "width": 100},
+            {"title": "Última Actualización", "type": "TEXT_NUMBER", "width": 150},
+        ],
+        "field_mapping": {
+            "ID": "ID",
+            "UUID": "UUID",
+            "Serie": "Serie",
+            "Número": "Number",
+            "Fecha": "Date",
+            "Cliente": "ClientName",
+            "RFC": "RFC",
+            "Subtotal": "Subtotal",
+            "IVA": "VAT",
+            "Total": "Total",
+            "Orden Compra": "PurchaseOrder",
+            "Estado": "Status",
+        },
+        "primary_key": "ID",
+    },
 }
 
 
@@ -384,6 +539,53 @@ class BindCatalogSync:
 
         return existing
 
+    def _fetch_categories(self) -> list:
+        """Obtiene y aplana las categorías jerárquicas de Bind."""
+        try:
+            # Categories retorna una lista directa (no envuelta en "value")
+            response = self.bind_client._request("GET", "/Categories")
+
+            # Si es una lista directa
+            if isinstance(response, list):
+                categories = response
+            # Si viene envuelta en "value"
+            elif isinstance(response, dict) and "value" in response:
+                categories = response["value"]
+            else:
+                categories = []
+
+            # Aplanar la estructura jerárquica
+            flat_categories = []
+
+            def flatten(items, level=1, parent_id=None, parent_name=None):
+                for item in items:
+                    flat_item = {
+                        "ID": item.get("ID"),
+                        "Name": item.get("Name"),
+                        "Level": level,
+                        "ParentID": parent_id or "",
+                        "ParentName": parent_name or "",
+                    }
+                    flat_categories.append(flat_item)
+
+                    # Procesar subcategorías recursivamente
+                    sub_cats = item.get("SubCategories", [])
+                    if sub_cats:
+                        flatten(
+                            sub_cats,
+                            level=level + 1,
+                            parent_id=item.get("ID"),
+                            parent_name=item.get("Name"),
+                        )
+
+            flatten(categories)
+            logger.info(f"  Categorías aplanadas: {len(flat_categories)}")
+            return flat_categories
+
+        except Exception as e:
+            logger.error(f"Error obteniendo categorías: {e}")
+            return []
+
     def _fetch_bind_data(self, catalog_name: str, config: dict, use_date_filter: bool = True) -> list:
         """Obtiene datos desde Bind ERP.
 
@@ -426,10 +628,23 @@ class BindCatalogSync:
             "get_locations": "/Locations",
             "get_orders": "/Orders",
             "get_quotes": "/Quotes",
+            "get_categories": "/Categories",
+            "get_accounts": "/Accounts",
+            "get_account_categories": "/AccountCategories",
+            "get_accounting_journals": "/AccountingJournals",
+            "get_webhooks": "/WebHooks",
+            "get_webhook_subscriptions": "/WebHookSubscriptions",
+            "get_invoices": "/Invoices",
         }
 
         if method_name in endpoint_map:
             endpoint = endpoint_map[method_name]
+
+            # Categorías retorna una lista directa con estructura jerárquica
+            if method_name == "get_categories":
+                return self._fetch_categories()
+
+            # WebHooks y WebHookSubscriptions también pueden tener formato diferente
             return self.bind_client._paginated_get(
                 endpoint,
                 params=params if params else None,

@@ -155,9 +155,17 @@ async def lifespan(app: FastAPI):
         ("sync_catalog_currencies", run_sync_currencies, "Sync Catálogo - Monedas"),
         ("sync_catalog_pricelists", run_sync_pricelists, "Sync Catálogo - Listas de Precios"),
         ("sync_catalog_bankaccounts", run_sync_bankaccounts, "Sync Catálogo - Cuentas Bancarias"),
+        ("sync_catalog_banks", run_sync_banks, "Sync Catálogo - Bancos"),
         ("sync_catalog_locations", run_sync_locations, "Sync Catálogo - Ubicaciones"),
         ("sync_catalog_orders", run_sync_orders, "Sync Catálogo - Pedidos"),
         ("sync_catalog_quotes", run_sync_quotes, "Sync Catálogo - Cotizaciones"),
+        ("sync_catalog_categories", run_sync_categories, "Sync Catálogo - Categorías"),
+        ("sync_catalog_accounts", run_sync_accounts, "Sync Catálogo - Cuentas Contables"),
+        ("sync_catalog_account_categories", run_sync_account_categories, "Sync Catálogo - Catálogo Cuentas SAT"),
+        ("sync_catalog_accounting_journals", run_sync_accounting_journals, "Sync Catálogo - Pólizas Contables"),
+        ("sync_catalog_webhooks", run_sync_webhooks, "Sync Catálogo - WebHooks"),
+        ("sync_catalog_webhook_subscriptions", run_sync_webhook_subscriptions, "Sync Catálogo - Suscripciones WebHooks"),
+        ("sync_catalog_invoices", run_sync_invoices, "Sync Catálogo - Facturas"),
     ]
 
     for job_id, job_func, job_name in catalog_jobs:
@@ -357,6 +365,30 @@ async def run_sync_orders():
 
 async def run_sync_quotes():
     return await run_catalog_sync("quotes", "sync_catalog_quotes", "Sync Catálogo - Cotizaciones")
+
+async def run_sync_banks():
+    return await run_catalog_sync("banks", "sync_catalog_banks", "Sync Catálogo - Bancos")
+
+async def run_sync_categories():
+    return await run_catalog_sync("categories", "sync_catalog_categories", "Sync Catálogo - Categorías")
+
+async def run_sync_accounts():
+    return await run_catalog_sync("accounts", "sync_catalog_accounts", "Sync Catálogo - Cuentas Contables")
+
+async def run_sync_account_categories():
+    return await run_catalog_sync("account_categories", "sync_catalog_account_categories", "Sync Catálogo - Catálogo Cuentas SAT")
+
+async def run_sync_accounting_journals():
+    return await run_catalog_sync("accounting_journals", "sync_catalog_accounting_journals", "Sync Catálogo - Pólizas Contables")
+
+async def run_sync_webhooks():
+    return await run_catalog_sync("webhooks", "sync_catalog_webhooks", "Sync Catálogo - WebHooks")
+
+async def run_sync_webhook_subscriptions():
+    return await run_catalog_sync("webhook_subscriptions", "sync_catalog_webhook_subscriptions", "Sync Catálogo - Suscripciones WebHooks")
+
+async def run_sync_invoices():
+    return await run_catalog_sync("invoices", "sync_catalog_invoices", "Sync Catálogo - Facturas")
 
 
 def verify_smartsheet_signature(
@@ -902,9 +934,17 @@ async def admin_get_job_details(job_id: str):
         "sync_catalog_currencies": "GET /api/Currencies",
         "sync_catalog_pricelists": "GET /api/PriceLists",
         "sync_catalog_bankaccounts": "GET /api/BankAccounts",
+        "sync_catalog_banks": "GET /api/Banks",
         "sync_catalog_locations": "GET /api/Locations",
         "sync_catalog_orders": "GET /api/Orders",
         "sync_catalog_quotes": "GET /api/Quotes",
+        "sync_catalog_categories": "GET /api/Categories",
+        "sync_catalog_accounts": "GET /api/Accounts",
+        "sync_catalog_account_categories": "GET /api/AccountCategories",
+        "sync_catalog_accounting_journals": "GET /api/AccountingJournals",
+        "sync_catalog_webhooks": "GET /api/WebHooks",
+        "sync_catalog_webhook_subscriptions": "GET /api/WebHookSubscriptions",
+        "sync_catalog_invoices": "GET /api/Invoices",
     }
 
     # Usar valores de la base de datos como fallback si no hay metadatos hardcodeados
@@ -1049,9 +1089,17 @@ async def admin_run_job_now(job_id: str, background_tasks: BackgroundTasks):
         "sync_catalog_currencies": run_sync_currencies,
         "sync_catalog_pricelists": run_sync_pricelists,
         "sync_catalog_bankaccounts": run_sync_bankaccounts,
+        "sync_catalog_banks": run_sync_banks,
         "sync_catalog_locations": run_sync_locations,
         "sync_catalog_orders": run_sync_orders,
         "sync_catalog_quotes": run_sync_quotes,
+        "sync_catalog_categories": run_sync_categories,
+        "sync_catalog_accounts": run_sync_accounts,
+        "sync_catalog_account_categories": run_sync_account_categories,
+        "sync_catalog_accounting_journals": run_sync_accounting_journals,
+        "sync_catalog_webhooks": run_sync_webhooks,
+        "sync_catalog_webhook_subscriptions": run_sync_webhook_subscriptions,
+        "sync_catalog_invoices": run_sync_invoices,
     }
 
     runner = job_runners.get(job_id)
