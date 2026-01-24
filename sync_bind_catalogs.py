@@ -411,15 +411,22 @@ CATALOG_CONFIGS = {
         "columns": [
             {"title": "ID", "type": "TEXT_NUMBER", "width": 300},
             {"title": "Código", "type": "TEXT_NUMBER", "width": 120},
-            {"title": "Nombre", "type": "TEXT_NUMBER", "width": 300},
+            {"title": "Descripción", "type": "TEXT_NUMBER", "width": 300},
+            {"title": "Nivel", "type": "TEXT_NUMBER", "width": 80},
+            {"title": "Tipo", "type": "TEXT_NUMBER", "width": 100},
+            {"title": "Grupo Padre", "type": "TEXT_NUMBER", "width": 200},
             {"title": "Última Actualización", "type": "TEXT_NUMBER", "width": 150},
         ],
         "field_mapping": {
             "ID": "ID",
             "Código": "Code",
-            "Nombre": "Name",
+            "Descripción": "Description",
+            "Nivel": "Level",
+            "Tipo": "Type",
+            "Grupo Padre": "ParentDescription",
         },
         "primary_key": "ID",
+        "flatten_hierarchy": True,
     },
     "invoices": {
         "sheet_name": "Bind - Facturas",
@@ -586,6 +593,56 @@ class BindCatalogSync:
             logger.error(f"Error obteniendo categorías: {e}")
             return []
 
+    def _fetch_account_categories(self) -> list:
+        """Obtiene y aplana el catálogo de cuentas SAT (estructura jerárquica GLGroups)."""
+        try:
+            response = self.bind_client._request("GET", "/AccountCategories")
+
+            # La respuesta tiene estructura: {"GLGroups": [{Groups: [{SubGroups: []}]}]}
+            gl_groups = response.get("GLGroups", [])
+
+            flat_items = []
+
+            for gl_group in gl_groups:
+                # Nivel 1: GLGroup (Activos, Pasivos, etc.)
+                flat_items.append({
+                    "ID": gl_group.get("ID"),
+                    "Code": "",
+                    "Description": gl_group.get("Description"),
+                    "Level": 1,
+                    "Type": "GLGroup",
+                    "ParentDescription": "",
+                })
+
+                # Nivel 2: Groups
+                for group in gl_group.get("Groups", []):
+                    flat_items.append({
+                        "ID": group.get("ID"),
+                        "Code": group.get("Code", ""),
+                        "Description": group.get("Description"),
+                        "Level": 2,
+                        "Type": "Group",
+                        "ParentDescription": gl_group.get("Description", ""),
+                    })
+
+                    # Nivel 3: SubGroups
+                    for subgroup in group.get("SubGroups", []):
+                        flat_items.append({
+                            "ID": subgroup.get("ID"),
+                            "Code": subgroup.get("Code", ""),
+                            "Description": subgroup.get("Description"),
+                            "Level": 3,
+                            "Type": "SubGroup",
+                            "ParentDescription": group.get("Description", ""),
+                        })
+
+            logger.info(f"  Catálogo de cuentas SAT aplanado: {len(flat_items)} items")
+            return flat_items
+
+        except Exception as e:
+            logger.error(f"Error obteniendo catálogo de cuentas SAT: {e}")
+            return []
+
     def _fetch_bind_data(self, catalog_name: str, config: dict, use_date_filter: bool = True) -> list:
         """Obtiene datos desde Bind ERP.
 
@@ -643,6 +700,10 @@ class BindCatalogSync:
             # Categorías retorna una lista directa con estructura jerárquica
             if method_name == "get_categories":
                 return self._fetch_categories()
+
+            # AccountCategories tiene estructura jerárquica GLGroups
+            if method_name == "get_account_categories":
+                return self._fetch_account_categories()
 
             # WebHooks y WebHookSubscriptions también pueden tener formato diferente
             return self.bind_client._paginated_get(
