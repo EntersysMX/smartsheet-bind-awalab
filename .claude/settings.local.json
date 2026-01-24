@@ -5,7 +5,8 @@
       "Bash(curl:*)",
       "Bash(jq:*)",
       "Bash(python:*)",
-      "Bash(gcloud compute ssh prod-server --zone=us-central1-c --command=\"cd /srv/apps_entersys/smartsheet_bind_awalab && docker compose logs --tail=100 2>&1 | grep -E ''Running job|Ejecutando|completada|Sincronización|added|skipped|Error''\")"
+      "Bash(gcloud compute ssh prod-server --zone=us-central1-c --command=\"cd /srv/apps_entersys/smartsheet_bind_awalab && docker compose logs --tail=100 2>&1 | grep -E ''Running job|Ejecutando|completada|Sincronización|added|skipped|Error''\")",
+      "Bash(gcloud compute ssh prod-server --zone=us-central1-c --command=\"cd /srv/apps_entersys/smartsheet_bind_awalab && docker compose exec middleware python -c \"\"\nfrom sync_bind_catalogs import sync_all_bind_catalogs\nimport json\n\nprint\\(''Ejecutando sincronización inicial de todos los catálogos...''\\)\nprint\\(''Esto puede tomar varios minutos...''\\)\nprint\\(\\)\n\nresults = sync_all_bind_catalogs\\(\\)\n\nprint\\(\\)\nprint\\(''=== RESULTADOS ===''\\)\nfor name, result in results.items\\(\\):\n    if result.get\\(''success''\\):\n        print\\(f''{name}: OK - {result.get\\(\"\"total_records\"\", 0\\)} registros \\({result.get\\(\"\"inserted\"\", 0\\)} nuevos, {result.get\\(\"\"updated\"\", 0\\)} actualizados\\)''\\)\n    else:\n        print\\(f''{name}: ERROR - {result.get\\(\"\"error\"\", \"\"Unknown error\"\"\\)}''\\)\n\"\"\")"
     ]
   }
 }

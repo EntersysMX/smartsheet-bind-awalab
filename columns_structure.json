@@ -1,0 +1,1238 @@
+[
+  {
+    "title": "Nueva",
+    "type": 1,
+    "index": 0,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Nueva Clave Busqueda por error en Folio BIND",
+    "type": 1,
+    "index": 1,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 92
+  },
+  {
+    "title": "Refacturacion",
+    "type": 5,
+    "index": 2,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 57
+  },
+  {
+    "title": "Cancelada",
+    "type": 5,
+    "index": 3,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 122
+  },
+  {
+    "title": "Estatus",
+    "type": 6,
+    "index": 4,
+    "primary": false,
+    "options": [
+      "Activa",
+      "Cancelada",
+      "Pagada"
+    ],
+    "symbol": null,
+    "width": 94
+  },
+  {
+    "title": "Ubicacion",
+    "type": 1,
+    "index": 5,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 156
+  },
+  {
+    "title": "Columna Primaria",
+    "type": 1,
+    "index": 6,
+    "primary": true,
+    "options": null,
+    "symbol": null,
+    "width": 152
+  },
+  {
+    "title": "Fecha..",
+    "type": 3,
+    "index": 7,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 133
+  },
+  {
+    "title": "No.",
+    "type": 1,
+    "index": 8,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 154
+  },
+  {
+    "title": "Emision",
+    "type": 2,
+    "index": 9,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 80
+  },
+  {
+    "title": "Cliente",
+    "type": 1,
+    "index": 10,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 180
+  },
+  {
+    "title": "Picking",
+    "type": 6,
+    "index": 11,
+    "primary": false,
+    "options": [
+      "Completo (listo para ruta)",
+      "Entregada con Remision",
+      "Incompleto (no encuentro material)",
+      "Pendiente se recolectara con proveedor",
+      "Pendiente recibir material de proveedor",
+      "Item Caducado",
+      "Item Roto",
+      "Dist Pendiente Pasar a Recolectar",
+      "Ruta Cuernavaca",
+      "Refacturacion"
+    ],
+    "symbol": null,
+    "width": 199
+  },
+  {
+    "title": "Estado de Entrega",
+    "type": 1,
+    "index": 12,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 140
+  },
+  {
+    "title": "Ruta",
+    "type": 6,
+    "index": 13,
+    "primary": false,
+    "options": [
+      "Local Norte",
+      "Local Sur",
+      "Sureste",
+      "Tamaulipas",
+      "Bajio-Occidente"
+    ],
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Fecha de Programación de Entrega",
+    "type": 2,
+    "index": 14,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 108
+  },
+  {
+    "title": "Responsable de Entrega",
+    "type": 4,
+    "index": 15,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 133
+  },
+  {
+    "title": "Estatus Entrega",
+    "type": 1,
+    "index": 16,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 115
+  },
+  {
+    "title": "Promise Date",
+    "type": 2,
+    "index": 17,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 104
+  },
+  {
+    "title": "Fecha de Entrega",
+    "type": 2,
+    "index": 18,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 118
+  },
+  {
+    "title": "Quien Recibio",
+    "type": 1,
+    "index": 19,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 314
+  },
+  {
+    "title": "Tiempo Entrega Logistica",
+    "type": 1,
+    "index": 20,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 74
+  },
+  {
+    "title": "Codigo de Visita",
+    "type": 1,
+    "index": 21,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 65
+  },
+  {
+    "title": "Usuario",
+    "type": 4,
+    "index": 22,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 60
+  },
+  {
+    "title": "Cantidad",
+    "type": 1,
+    "index": 23,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 75
+  },
+  {
+    "title": "Cantidad Total",
+    "type": 1,
+    "index": 24,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 106
+  },
+  {
+    "title": "Actividad",
+    "type": 6,
+    "index": 25,
+    "primary": false,
+    "options": [
+      "VTAS-Cotización",
+      "VTAS-Prospección",
+      "VTAS-Recepción Llamada",
+      "VTAS-Telemarketing",
+      "VTAS-Recuperación Cartera Perdida",
+      "VTAS-RECEPCIÓN ORDEN COMPRA",
+      "OPS-Factura",
+      "OPS-Registro de compra",
+      "OPS-Movimientos de Banco",
+      "OPS-Actualización de Admin",
+      "OPS-Complementementos de Pago",
+      "OPS-Solicitud Cotizacion a Vtas",
+      "Revisión de Correo",
+      "OPS-Checar Timbres Aspel",
+      "OPS-Ordenes de compra",
+      "OPS-Administración de Tickets",
+      "OPS-Rutas a Soporte y Logística",
+      "OPS-Complemento de Pago",
+      "OPS-Compras Sae",
+      "OPS-Cancelación de Factura",
+      "OPS-Refacturación",
+      "CXC-Revisión de Facturas",
+      "CXC-Llamada de seguimiento Cliente",
+      "CXC-Confirmación de pago",
+      "CXC-Notificación de Monto por cobrar",
+      "OTROS"
+    ],
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Motivo de Visita",
+    "type": 6,
+    "index": 26,
+    "primary": false,
+    "options": [
+      "VISITA-Prospección",
+      "VISITA-Seguimiento",
+      "VISITA-Negociación",
+      "VISITA-Cierre",
+      "VISITA-Aclaración de Reclamación",
+      "VISITA-Cobranza"
+    ],
+    "symbol": null,
+    "width": 42
+  },
+  {
+    "title": "Contacto",
+    "type": 1,
+    "index": 27,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 78
+  },
+  {
+    "title": "No. Cotizacion",
+    "type": 1,
+    "index": 28,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Monto de Cotizacion",
+    "type": 1,
+    "index": 29,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Motivo de la Reunion",
+    "type": 1,
+    "index": 30,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Registro de Salida",
+    "type": 2,
+    "index": 31,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "No. Guia",
+    "type": 1,
+    "index": 32,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Resultado Visita",
+    "type": 1,
+    "index": 33,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Serie",
+    "type": 6,
+    "index": 34,
+    "primary": false,
+    "options": [
+      "AWA-",
+      "FAC",
+      "REF-",
+      "REM-"
+    ],
+    "symbol": null,
+    "width": 136
+  },
+  {
+    "title": "Vencimiento",
+    "type": 2,
+    "index": 35,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 91
+  },
+  {
+    "title": "Nombre comercial",
+    "type": 1,
+    "index": 36,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 254
+  },
+  {
+    "title": "RFC Cliente",
+    "type": 1,
+    "index": 37,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "OrdenDeCompra",
+    "type": 1,
+    "index": 38,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 116
+  },
+  {
+    "title": "Costo",
+    "type": 1,
+    "index": 39,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 91
+  },
+  {
+    "title": "Utlidad",
+    "type": 1,
+    "index": 40,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Subtotal",
+    "type": 1,
+    "index": 41,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Subtotal Servicios",
+    "type": 6,
+    "index": 42,
+    "primary": false,
+    "options": [
+      "0"
+    ],
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Subtotal Productos",
+    "type": 1,
+    "index": 43,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Descuento",
+    "type": 1,
+    "index": 44,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "I.V.A",
+    "type": 1,
+    "index": 45,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "IEPS",
+    "type": 6,
+    "index": 46,
+    "primary": false,
+    "options": [
+      "0"
+    ],
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Total",
+    "type": 1,
+    "index": 47,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Pagos",
+    "type": 1,
+    "index": 48,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": ".N.C.",
+    "type": 6,
+    "index": 49,
+    "primary": false,
+    "options": [
+      "0",
+      "334.079999999999"
+    ],
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Pendiente",
+    "type": 1,
+    "index": 50,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Grupo2",
+    "type": 1,
+    "index": 51,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Código Prod/Serv",
+    "type": 1,
+    "index": 52,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Vendedor",
+    "type": 6,
+    "index": 53,
+    "primary": false,
+    "options": [
+      "ANA GABRIELA GUARNEROS MORALES",
+      "Alejandro Maldonado Garza",
+      "Andrea Silva Carreon",
+      "Elizabeth Ruiz Escamilla",
+      "JESSICA  ABIGAIL JIMENEZ SANCHEZ",
+      "Jasim castillo Hernandez",
+      "Jorge Perez Ocampo"
+    ],
+    "symbol": null,
+    "width": 176
+  },
+  {
+    "title": "Pedido",
+    "type": 1,
+    "index": 54,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 135
+  },
+  {
+    "title": "Fecha Compromiso",
+    "type": 2,
+    "index": 55,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Sucursal",
+    "type": 6,
+    "index": 56,
+    "primary": false,
+    "options": [
+      "Matriz"
+    ],
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Almacén",
+    "type": 6,
+    "index": 57,
+    "primary": false,
+    "options": [
+      "Matriz"
+    ],
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Producto/Concepto",
+    "type": 1,
+    "index": 58,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Moneda Original",
+    "type": 1,
+    "index": 59,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Categoría",
+    "type": 1,
+    "index": 60,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "I.V.A3",
+    "type": 6,
+    "index": 61,
+    "primary": false,
+    "options": [
+      "0"
+    ],
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Moneda",
+    "type": 6,
+    "index": 62,
+    "primary": false,
+    "options": [
+      "MXN",
+      "USD"
+    ],
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Lote/Pedimento",
+    "type": 1,
+    "index": 63,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Estado",
+    "type": 1,
+    "index": 64,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Fuente",
+    "type": 1,
+    "index": 65,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Tipo",
+    "type": 6,
+    "index": 66,
+    "primary": false,
+    "options": [
+      "Factura",
+      "Remisión"
+    ],
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Folio Fiscal",
+    "type": 1,
+    "index": 67,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 145
+  },
+  {
+    "title": "T.C.",
+    "type": 1,
+    "index": 68,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Peso",
+    "type": 1,
+    "index": 69,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "mes",
+    "type": 6,
+    "index": 70,
+    "primary": false,
+    "options": [
+      "enero",
+      "febrero",
+      "marzo"
+    ],
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "año",
+    "type": 6,
+    "index": 71,
+    "primary": false,
+    "options": [
+      "2020"
+    ],
+    "symbol": null,
+    "width": 616
+  },
+  {
+    "title": "Vencidos",
+    "type": 6,
+    "index": 72,
+    "primary": false,
+    "options": [
+      "A Tiempo",
+      "Pagada",
+      "Vencida"
+    ],
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Para DSO",
+    "type": 6,
+    "index": 73,
+    "primary": false,
+    "options": [
+      "Ultimo año de Ventas"
+    ],
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Distribuidores",
+    "type": 6,
+    "index": 74,
+    "primary": false,
+    "options": [
+      "Distribuidor",
+      "Normal"
+    ],
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Tiempo de Pago",
+    "type": 1,
+    "index": 75,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "OTD",
+    "type": 1,
+    "index": 76,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Modificado por",
+    "type": 4,
+    "index": 77,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Modificado",
+    "type": 3,
+    "index": 78,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Year",
+    "type": 1,
+    "index": 79,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Actualizacion de BANCOS",
+    "type": 1,
+    "index": 80,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Real Pendiente",
+    "type": 1,
+    "index": 81,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Abono",
+    "type": 1,
+    "index": 82,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Columna56",
+    "type": 1,
+    "index": 83,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Situacion",
+    "type": 2,
+    "index": 84,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Envio Edo Cta",
+    "type": 5,
+    "index": 85,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 75
+  },
+  {
+    "title": "Actividad por Ejecutar",
+    "type": 6,
+    "index": 86,
+    "primary": false,
+    "options": [
+      "Envió Completo (edo cta, facs, pods, revis)",
+      "Envió de Estado de Cuenta",
+      "Envió de Facturas PDF y XML",
+      "Envió de Evidencias Entrega",
+      "Envió de Evidencias Revisión",
+      "Subir a Portal",
+      "Llamada de seguimiento Estado de Cuenta***",
+      "Registro de Tareas Pendientes",
+      "Registro Ejecución de Tareas Pendientes",
+      "Ejecución de Actividad solicitada por Cliente",
+      "Aplicar pago"
+    ],
+    "symbol": null,
+    "width": 194
+  },
+  {
+    "title": "Fecha para Ejecutar Actividad",
+    "type": 2,
+    "index": 87,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Actividad Ejecutada",
+    "type": 5,
+    "index": 88,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 70
+  },
+  {
+    "title": "Entregada",
+    "type": 5,
+    "index": 89,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 83
+  },
+  {
+    "title": "Revision",
+    "type": 5,
+    "index": 90,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 79
+  },
+  {
+    "title": "Rev p formula",
+    "type": 1,
+    "index": 91,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 107
+  },
+  {
+    "title": "Pagada",
+    "type": 5,
+    "index": 92,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 75
+  },
+  {
+    "title": "Fecha de pago",
+    "type": 2,
+    "index": 93,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Fecha Revision",
+    "type": 2,
+    "index": 94,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Motivo de No Pago",
+    "type": 6,
+    "index": 95,
+    "primary": false,
+    "options": [
+      "Programada a pago (fecha aprox)",
+      "Moroso (Despacho)",
+      "No hay OC (Ventas)",
+      "Sin revisión (CXC)",
+      "No Aceptada en Portal (Cliente)",
+      "No hay evidencia de entrega (Logística)",
+      "Incumplimiento de Fechas (Cliente)",
+      "Refacturacion por cierre de mes"
+    ],
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Responsable Actividad",
+    "type": 4,
+    "index": 96,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Estatus Vencimiento",
+    "type": 6,
+    "index": 97,
+    "primary": false,
+    "options": [
+      "Vencida",
+      "A Tiempo"
+    ],
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Comentarios",
+    "type": 1,
+    "index": 98,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "Numero de Factura",
+    "type": 1,
+    "index": 99,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 175
+  },
+  {
+    "title": "Clave",
+    "type": 1,
+    "index": 100,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 303
+  },
+  {
+    "title": "Emisión",
+    "type": 2,
+    "index": 101,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 90
+  },
+  {
+    "title": "Grupo (1)",
+    "type": 1,
+    "index": 102,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "I.V.A (1)",
+    "type": 6,
+    "index": 103,
+    "primary": false,
+    "options": [
+      "0",
+      "0.16"
+    ],
+    "symbol": null,
+    "width": 64
+  },
+  {
+    "title": "MeLi con Problemas",
+    "type": 5,
+    "index": 104,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Fecha Pedido",
+    "type": 2,
+    "index": 105,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Tiempo Awalab",
+    "type": 1,
+    "index": 106,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Año del Pedido",
+    "type": 1,
+    "index": 107,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Mes del Pedido",
+    "type": 1,
+    "index": 108,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Cumplimiento menor a 15 dias",
+    "type": 1,
+    "index": 109,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Enviar",
+    "type": 5,
+    "index": 110,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Columna52",
+    "type": 1,
+    "index": 111,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Columna53",
+    "type": 1,
+    "index": 112,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Columna49",
+    "type": 1,
+    "index": 113,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Folio",
+    "type": 1,
+    "index": 114,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Fecha",
+    "type": 2,
+    "index": 115,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "RFC",
+    "type": 1,
+    "index": 116,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "IVA",
+    "type": 1,
+    "index": 117,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Uso CFDI",
+    "type": 1,
+    "index": 118,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Metodo Pago",
+    "type": 1,
+    "index": 119,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Orden Compra",
+    "type": 1,
+    "index": 120,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Bind ID",
+    "type": 1,
+    "index": 121,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  },
+  {
+    "title": "Ultima Sync",
+    "type": 1,
+    "index": 122,
+    "primary": false,
+    "options": null,
+    "symbol": null,
+    "width": 150
+  }
+]

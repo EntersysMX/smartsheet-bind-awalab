@@ -258,9 +258,15 @@ def seed_default_configs():
             ("sync_catalog_currencies", "Sync Catálogo - Monedas", "Sincroniza monedas y tipos de cambio"),
             ("sync_catalog_pricelists", "Sync Catálogo - Listas de Precios", "Sincroniza listas de precios"),
             ("sync_catalog_bankaccounts", "Sync Catálogo - Cuentas Bancarias", "Sincroniza cuentas bancarias"),
+            ("sync_catalog_banks", "Sync Catálogo - Bancos", "Sincroniza catálogo de bancos"),
             ("sync_catalog_locations", "Sync Catálogo - Ubicaciones", "Sincroniza ubicaciones/sucursales"),
             ("sync_catalog_orders", "Sync Catálogo - Pedidos", "Sincroniza pedidos de venta"),
             ("sync_catalog_quotes", "Sync Catálogo - Cotizaciones", "Sincroniza cotizaciones"),
+            ("sync_catalog_categories", "Sync Catálogo - Categorías", "Sincroniza categorías de productos"),
+            ("sync_catalog_accounts", "Sync Catálogo - Cuentas Contables", "Sincroniza cuentas contables"),
+            ("sync_catalog_account_categories", "Sync Catálogo - Catálogo Cuentas SAT", "Sincroniza catálogo de cuentas SAT"),
+            ("sync_catalog_accounting_journals", "Sync Catálogo - Pólizas Contables", "Sincroniza pólizas contables"),
+            ("sync_catalog_invoices", "Sync Catálogo - Facturas", "Sincroniza facturas emitidas"),
         ]
 
         for job_id, name, description in catalog_configs:
