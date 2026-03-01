@@ -3,11 +3,12 @@ Script para configurar la hoja de Smartsheet con las columnas correctas
 y agregar registros de ejemplo para facturacion.
 """
 
+import os
 import smartsheet
 from smartsheet.models import Column, Row, Cell
 
 # Configuracion
-ACCESS_TOKEN = '***SMARTSHEET_TOKEN_REMOVED***'
+ACCESS_TOKEN = os.environ.get('SMARTSHEET_TOKEN', '')
 SHEET_ID = 4956740131966852
 
 # Columnas requeridas para facturacion
