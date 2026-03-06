@@ -757,7 +757,7 @@ class BindCatalogSync:
             logger.info(f"  Registros obtenidos de Bind: {len(bind_data)}")
 
             # Preparar timestamp
-            timestamp = datetime.now(CDMX_TZ).strftime("%Y-%m-%d %H:%M")
+            timestamp = datetime.now(CDMX_TZ).strftime("%Y-%m-%dT%H:%M:%S")
 
             # Preparar filas para insertar/actualizar
             rows_to_add = []
