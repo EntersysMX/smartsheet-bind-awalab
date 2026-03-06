@@ -447,6 +447,7 @@ CATALOG_CONFIGS = {
             {"title": "Total", "type": "TEXT_NUMBER", "width": 120},
             {"title": "Orden Compra", "type": "TEXT_NUMBER", "width": 150},
             {"title": "Estado", "type": "TEXT_NUMBER", "width": 100},
+            {"title": "Comentarios", "type": "TEXT_NUMBER", "width": 300},
             {"title": "Última Actualización", "type": "TEXT_NUMBER", "width": 150},
         ],
         "field_mapping": {
@@ -462,6 +463,7 @@ CATALOG_CONFIGS = {
             "Total": "Total",
             "Orden Compra": "PurchaseOrder",
             "Estado": "Status",
+            "Comentarios": "Comments",
         },
         "primary_key": "ID",
     },
