@@ -34,12 +34,9 @@ services:
       - traefik-public
       - internal
 
-    # Recursos para produccion
+    # Recursos para produccion (solo soft limits/reservations - regla EnterSys)
     deploy:
       resources:
-        limits:
-          cpus: "1.0"
-          memory: 1024M
         reservations:
           cpus: "0.2"
           memory: 256M

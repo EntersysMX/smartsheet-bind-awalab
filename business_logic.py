@@ -788,6 +788,22 @@ def sync_invoices_from_bind(
         sheet = ss_service.client.Sheets.get_sheet(sheet_id)
         column_map = {col.title: col.id for col in sheet.columns}
 
+        # Asegurar que la columna "Comentarios" existe en la hoja
+        if "Comentarios" not in column_map:
+            try:
+                from smartsheet.models import Column as SSColumn
+                new_col = SSColumn({
+                    "title": "Comentarios",
+                    "type": "TEXT_NUMBER",
+                    "width": 300,
+                })
+                response = ss_service.client.Sheets.add_columns(sheet_id, [new_col])
+                if response.result:
+                    column_map["Comentarios"] = response.result[0].id
+                    logger.info(f"Columna 'Comentarios' creada en hoja {sheet_id}")
+            except Exception as e:
+                logger.warning(f"No se pudo crear columna 'Comentarios': {e}")
+
         # Preparar filas para insertar y actualizar
         rows_to_add = []
         rows_to_update = []
@@ -882,8 +898,8 @@ def sync_invoices_from_bind(
                     "Producto/Concepto": product.get("Name", ""),
                     "Cantidad": product.get("Qty", 0),
                     "Cantidad Total": product.get("Qty", 0),
-                    # Comentarios de la factura
-                    "Comentarios": invoice_detail.get("Comments", "") or "",
+                    # Comentarios de la factura (fallback a lista si detalle falla)
+                    "Comentarios": invoice_detail.get("Comments") or inv.get("Comments") or "",
                 }
 
                 # Crear celdas
