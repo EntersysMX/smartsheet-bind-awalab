@@ -1,6 +1,6 @@
 """
-database.py - Base de datos SQLite para configuración de procesos.
-Almacena la configuración de cada job/proceso del scheduler.
+database.py - Base de datos SQLite para configuración multi-empresa.
+Almacena empresas y la configuración de cada job/proceso del scheduler.
 """
 
 import json
@@ -10,9 +10,9 @@ from pathlib import Path
 from typing import Optional
 from zoneinfo import ZoneInfo
 
-from sqlalchemy import create_engine, Column, Integer, String, Boolean, Text, DateTime
+from sqlalchemy import create_engine, Column, Integer, String, Boolean, Text, DateTime, ForeignKey, inspect
 from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, relationship
 
 logger = logging.getLogger(__name__)
 
@@ -28,13 +28,48 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 
 
+# ========== MODELOS ==========
+
+class Company(Base):
+    """Modelo para empresas/tenants."""
+
+    __tablename__ = "companies"
+
+    id = Column(String(50), primary_key=True)  # slug: "awalab", "empresa2"
+    name = Column(String(200), nullable=False)
+    bind_api_key = Column(String(500), nullable=False)
+    bind_api_base_url = Column(String(500), default="https://api.bind.com.mx/api")
+    smartsheet_workspace_id = Column(String(100))
+    bind_warehouse_id = Column(String(100))
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(CDMX_TZ))
+    updated_at = Column(DateTime, default=lambda: datetime.now(CDMX_TZ), onupdate=lambda: datetime.now(CDMX_TZ))
+
+    # Relación con ProcessConfig
+    process_configs = relationship("ProcessConfig", back_populates="company")
+
+    def to_dict(self) -> dict:
+        return {
+            "id": self.id,
+            "name": self.name,
+            "bind_api_base_url": self.bind_api_base_url,
+            "smartsheet_workspace_id": self.smartsheet_workspace_id,
+            "bind_warehouse_id": self.bind_warehouse_id,
+            "is_active": self.is_active,
+            "has_api_key": bool(self.bind_api_key),
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+
 class ProcessConfig(Base):
     """Modelo para configuración de procesos/jobs."""
 
     __tablename__ = "process_configs"
 
     id = Column(Integer, primary_key=True, autoincrement=True)
-    job_id = Column(String(50), unique=True, nullable=False, index=True)
+    job_id = Column(String(100), unique=True, nullable=False, index=True)
+    company_id = Column(String(50), ForeignKey("companies.id"), nullable=True, index=True)
     name = Column(String(200), nullable=False)
     description = Column(Text)
 
@@ -62,11 +97,15 @@ class ProcessConfig(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(CDMX_TZ))
     updated_at = Column(DateTime, default=lambda: datetime.now(CDMX_TZ), onupdate=lambda: datetime.now(CDMX_TZ))
 
+    # Relación con Company
+    company = relationship("Company", back_populates="process_configs")
+
     def to_dict(self) -> dict:
         """Convierte el modelo a diccionario."""
         return {
             "id": self.id,
             "job_id": self.job_id,
+            "company_id": self.company_id,
             "name": self.name,
             "description": self.description,
             "smartsheet_sheet_id": self.smartsheet_sheet_id,
@@ -84,11 +123,118 @@ class ProcessConfig(Base):
         }
 
 
+# ========== INIT & MIGRATION ==========
+
 def init_db():
-    """Inicializa la base de datos y crea las tablas."""
+    """Inicializa la base de datos, crea tablas nuevas y migra columnas faltantes."""
     Base.metadata.create_all(bind=engine)
     logger.info(f"Base de datos inicializada en: {DB_PATH}")
 
+    # Migrar: agregar company_id a process_configs si no existe
+    inspector = inspect(engine)
+    columns = [c["name"] for c in inspector.get_columns("process_configs")]
+    if "company_id" not in columns:
+        with engine.connect() as conn:
+            conn.execute(
+                __import__("sqlalchemy").text(
+                    "ALTER TABLE process_configs ADD COLUMN company_id VARCHAR(50) REFERENCES companies(id)"
+                )
+            )
+            conn.commit()
+        logger.info("Columna company_id agregada a process_configs")
+
+
+def migrate_existing_to_company(company_id: str):
+    """Migra ProcessConfigs existentes sin company_id a una empresa específica."""
+    db = SessionLocal()
+    try:
+        orphans = db.query(ProcessConfig).filter(
+            (ProcessConfig.company_id == None) | (ProcessConfig.company_id == "")
+        ).all()
+        for config in orphans:
+            config.company_id = company_id
+            config.updated_at = datetime.now(CDMX_TZ)
+        if orphans:
+            db.commit()
+            logger.info(f"Migrados {len(orphans)} ProcessConfigs a empresa '{company_id}'")
+    finally:
+        db.close()
+
+
+# ========== COMPANY CRUD ==========
+
+def get_company(company_id: str) -> Optional[Company]:
+    db = SessionLocal()
+    try:
+        return db.query(Company).filter(Company.id == company_id).first()
+    finally:
+        db.close()
+
+
+def get_all_companies(active_only: bool = False) -> list[Company]:
+    db = SessionLocal()
+    try:
+        q = db.query(Company)
+        if active_only:
+            q = q.filter(Company.is_active == True)
+        return q.all()
+    finally:
+        db.close()
+
+
+def create_or_update_company(
+    company_id: str,
+    name: str,
+    bind_api_key: str,
+    bind_api_base_url: str = "https://api.bind.com.mx/api",
+    smartsheet_workspace_id: str = None,
+    bind_warehouse_id: str = None,
+    is_active: bool = True,
+) -> Company:
+    db = SessionLocal()
+    try:
+        company = db.query(Company).filter(Company.id == company_id).first()
+        if company:
+            company.name = name
+            company.bind_api_key = bind_api_key
+            company.bind_api_base_url = bind_api_base_url
+            company.smartsheet_workspace_id = smartsheet_workspace_id
+            company.bind_warehouse_id = bind_warehouse_id
+            company.is_active = is_active
+            company.updated_at = datetime.now(CDMX_TZ)
+        else:
+            company = Company(
+                id=company_id,
+                name=name,
+                bind_api_key=bind_api_key,
+                bind_api_base_url=bind_api_base_url,
+                smartsheet_workspace_id=smartsheet_workspace_id,
+                bind_warehouse_id=bind_warehouse_id,
+                is_active=is_active,
+            )
+            db.add(company)
+        db.commit()
+        db.refresh(company)
+        return company
+    finally:
+        db.close()
+
+
+def delete_company(company_id: str) -> bool:
+    db = SessionLocal()
+    try:
+        company = db.query(Company).filter(Company.id == company_id).first()
+        if company:
+            company.is_active = False
+            company.updated_at = datetime.now(CDMX_TZ)
+            db.commit()
+            return True
+        return False
+    finally:
+        db.close()
+
+
+# ========== PROCESS CONFIG CRUD ==========
 
 def get_db():
     """Obtiene una sesión de base de datos."""
@@ -108,11 +254,14 @@ def get_process_config(job_id: str) -> Optional[ProcessConfig]:
         db.close()
 
 
-def get_all_process_configs() -> list[ProcessConfig]:
-    """Obtiene todas las configuraciones de procesos."""
+def get_all_process_configs(company_id: str = None) -> list[ProcessConfig]:
+    """Obtiene configuraciones de procesos, opcionalmente filtradas por empresa."""
     db = SessionLocal()
     try:
-        return db.query(ProcessConfig).all()
+        q = db.query(ProcessConfig)
+        if company_id:
+            q = q.filter(ProcessConfig.company_id == company_id)
+        return q.all()
     finally:
         db.close()
 
@@ -120,6 +269,7 @@ def get_all_process_configs() -> list[ProcessConfig]:
 def create_or_update_process_config(
     job_id: str,
     name: str,
+    company_id: str = None,
     description: str = None,
     smartsheet_sheet_id: str = None,
     smartsheet_sheet_name: str = None,
@@ -140,6 +290,8 @@ def create_or_update_process_config(
         if config:
             # Actualizar existente
             config.name = name
+            if company_id is not None:
+                config.company_id = company_id
             config.description = description
             config.smartsheet_sheet_id = smartsheet_sheet_id
             config.smartsheet_sheet_name = smartsheet_sheet_name
@@ -156,6 +308,7 @@ def create_or_update_process_config(
             # Crear nuevo
             config = ProcessConfig(
                 job_id=job_id,
+                company_id=company_id,
                 name=name,
                 description=description,
                 smartsheet_sheet_id=smartsheet_sheet_id,
@@ -192,6 +345,8 @@ def delete_process_config(job_id: str) -> bool:
         db.close()
 
 
+# ========== SEED ==========
+
 def seed_default_configs():
     """Crea las configuraciones por defecto solo si no existen.
 
@@ -200,6 +355,22 @@ def seed_default_configs():
     """
     from config import settings
 
+    # Crear empresa AWALab si no existe
+    if not get_company("awalab"):
+        create_or_update_company(
+            company_id="awalab",
+            name="AWALab de México",
+            bind_api_key=settings.BIND_API_KEY,
+            bind_api_base_url=settings.BIND_API_BASE_URL,
+            smartsheet_workspace_id="75095659046788",
+            bind_warehouse_id=settings.BIND_WAREHOUSE_ID,
+            is_active=True,
+        )
+        logger.info("Empresa AWALab creada")
+
+    # Migrar configs existentes sin company_id
+    migrate_existing_to_company("awalab")
+
     db = SessionLocal()
     try:
         # Proceso de sincronización de inventario - solo crear si no existe
@@ -207,6 +378,7 @@ def seed_default_configs():
         if not existing_inventory:
             create_or_update_process_config(
                 job_id="sync_inventory",
+                company_id="awalab",
                 name="Sincronización de Inventario",
                 description="Sincroniza el inventario desde Bind ERP hacia Smartsheet. Obtiene productos con existencias del almacén configurado y actualiza la hoja de inventario.",
                 smartsheet_sheet_id="346190987087748",
@@ -230,6 +402,7 @@ def seed_default_configs():
         if not existing_invoices:
             create_or_update_process_config(
                 job_id="sync_invoices",
+                company_id="awalab",
                 name="Sincronización de Facturas Bind -> Smartsheet",
                 description="Sincroniza facturas creadas en Bind ERP hacia Smartsheet. Obtiene facturas de los últimos 10 minutos y realiza UPSERT (actualiza existentes por UUID o inserta nuevas).",
                 smartsheet_sheet_id="4956740131966852",
@@ -274,6 +447,7 @@ def seed_default_configs():
             if not existing:
                 create_or_update_process_config(
                     job_id=job_id,
+                    company_id="awalab",
                     name=name,
                     description=description,
                     interval_minutes=120,  # Cada 2 horas
@@ -287,3 +461,54 @@ def seed_default_configs():
                 logger.info(f"Configuración de {job_id} creada")
     finally:
         db.close()
+
+
+def seed_company_default_configs(company_id: str):
+    """Crea los ProcessConfigs default para una empresa nueva."""
+    company = get_company(company_id)
+    if not company:
+        raise ValueError(f"Empresa '{company_id}' no existe")
+
+    catalog_configs = [
+        ("sync_invoices", "Sincronización de Facturas Bind -> Smartsheet", 10),
+        ("sync_inventory", "Sincronización de Inventario", 60),
+        ("sync_catalog_warehouses", "Sync Catálogo - Almacenes", 120),
+        ("sync_catalog_clients", "Sync Catálogo - Clientes", 120),
+        ("sync_catalog_products", "Sync Catálogo - Productos", 120),
+        ("sync_catalog_providers", "Sync Catálogo - Proveedores", 120),
+        ("sync_catalog_users", "Sync Catálogo - Usuarios", 120),
+        ("sync_catalog_currencies", "Sync Catálogo - Monedas", 120),
+        ("sync_catalog_pricelists", "Sync Catálogo - Listas de Precios", 120),
+        ("sync_catalog_bankaccounts", "Sync Catálogo - Cuentas Bancarias", 120),
+        ("sync_catalog_banks", "Sync Catálogo - Bancos", 120),
+        ("sync_catalog_locations", "Sync Catálogo - Ubicaciones", 120),
+        ("sync_catalog_orders", "Sync Catálogo - Pedidos", 120),
+        ("sync_catalog_quotes", "Sync Catálogo - Cotizaciones", 120),
+        ("sync_catalog_categories", "Sync Catálogo - Categorías", 120),
+        ("sync_catalog_accounts", "Sync Catálogo - Cuentas Contables", 120),
+        ("sync_catalog_account_categories", "Sync Catálogo - Catálogo Cuentas SAT", 120),
+        ("sync_catalog_accounting_journals", "Sync Catálogo - Pólizas Contables", 120),
+        ("sync_catalog_invoices", "Sync Catálogo - Facturas", 120),
+    ]
+
+    created = 0
+    for base_job_id, name, interval in catalog_configs:
+        full_job_id = f"{company_id}__{base_job_id}"
+        if not get_process_config(full_job_id):
+            create_or_update_process_config(
+                job_id=full_job_id,
+                company_id=company_id,
+                name=f"[{company.name}] {name}",
+                description=f"{name} para {company.name}",
+                interval_minutes=interval,
+                is_active=False,  # Inactivo por default, el admin los activa
+                operating_start_hour=7,
+                operating_end_hour=20,
+                source_system="bind",
+                target_system="smartsheet",
+                sync_direction="pull",
+            )
+            created += 1
+
+    logger.info(f"Creados {created} ProcessConfigs para empresa '{company_id}'")
+    return created
