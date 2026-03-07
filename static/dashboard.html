@@ -2044,12 +2044,23 @@
                 document.getElementById('stat-jobs').textContent = data.scheduler.job_count;
                 document.getElementById('stat-executions').textContent = data.history.total;
 
-                // Bind status
-                const bindStatus = data.connections.bind;
+                // Bind status (now a dict of company_id → bool)
+                const bindData = data.connections.bind;
                 const bindEl = document.getElementById('stat-bind');
                 const bindIcon = document.getElementById('bind-icon');
-                bindEl.textContent = bindStatus ? 'Conectado' : 'Error';
-                bindEl.className = 'stat-value ' + (bindStatus ? 'success' : 'error');
+                let bindAllOk = true, bindAnyOk = false;
+                if (typeof bindData === 'object' && bindData !== null) {
+                    const entries = Object.entries(bindData);
+                    const okCount = entries.filter(([,v]) => v).length;
+                    bindAllOk = okCount === entries.length;
+                    bindAnyOk = okCount > 0;
+                    bindEl.textContent = entries.length > 1 ? `${okCount}/${entries.length} OK` : (bindAllOk ? 'Conectado' : 'Error');
+                } else {
+                    bindAllOk = !!bindData;
+                    bindAnyOk = bindAllOk;
+                    bindEl.textContent = bindAllOk ? 'Conectado' : 'Error';
+                }
+                bindEl.className = 'stat-value ' + (bindAllOk ? 'success' : (bindAnyOk ? 'warning' : 'error'));
 
                 // Smartsheet status
                 const ssStatus = data.connections.smartsheet;
@@ -2060,9 +2071,9 @@
 
                 // Connection status in header
                 const statusEl = document.getElementById('connection-status');
-                const allOk = bindStatus && ssStatus;
+                const allOk = bindAllOk && ssStatus;
                 statusEl.innerHTML = `
-                    <span class="connection-dot ${allOk ? '' : (bindStatus || ssStatus ? 'warning' : 'error')}"></span>
+                    <span class="connection-dot ${allOk ? '' : (bindAnyOk || ssStatus ? 'warning' : 'error')}"></span>
                     <span>${allOk ? 'Sistemas operativos' : 'Conexion parcial'}</span>
                 `;
             } catch (e) {
@@ -2102,6 +2113,7 @@
                                 <div class="job-info">
                                     <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
                                         <span class="job-name">${job.name}</span>
+                                        ${job.company_id ? `<span style="background:#1e3a5f;color:#90caf9;font-size:0.65rem;padding:2px 6px;border-radius:8px;margin-left:6px">${job.company_id}</span>` : ''}
                                         <span class="job-status-chip ${isPaused ? 'paused' : 'active'}">
                                             <span class="material-icons" style="font-size: 14px;">${isPaused ? 'pause' : 'check_circle'}</span>
                                             ${isPaused ? 'Pausado' : 'Activo'}
