@@ -948,9 +948,12 @@ async def admin_list_jobs():
         source = metadata.get("source") or (f"{db_config.source_system} → {db_config.target_system}" if db_config and db_config.source_system else "")
         sheet_id = metadata.get("sheet_id") or (db_config.smartsheet_sheet_id if db_config else "")
 
+        company_id_parsed, base_type = parse_job_id(job.id)
         jobs.append({
             "id": job.id,
             "name": job.name,
+            "company_id": db_config.company_id if db_config else company_id_parsed,
+            "base_type": base_type,
             "description": description,
             "source": source,
             "sheet_id": sheet_id,
@@ -1140,41 +1143,16 @@ async def admin_resume_job(job_id: str):
 
 @app.post("/api/admin/jobs/{job_id}/run")
 async def admin_run_job_now(job_id: str, background_tasks: BackgroundTasks):
-    """Ejecuta un job inmediatamente."""
+    """Ejecuta un job inmediatamente (funciona con cualquier job_id registrado)."""
     job = scheduler.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' no encontrado")
 
-    # Mapeo de job_id a función de ejecución
-    job_runners = {
-        "sync_inventory": run_inventory_sync,
-        "sync_invoices": run_invoices_sync,
-        "sync_catalog_warehouses": run_sync_warehouses,
-        "sync_catalog_clients": run_sync_clients,
-        "sync_catalog_products": run_sync_products,
-        "sync_catalog_providers": run_sync_providers,
-        "sync_catalog_users": run_sync_users,
-        "sync_catalog_currencies": run_sync_currencies,
-        "sync_catalog_pricelists": run_sync_pricelists,
-        "sync_catalog_bankaccounts": run_sync_bankaccounts,
-        "sync_catalog_banks": run_sync_banks,
-        "sync_catalog_locations": run_sync_locations,
-        "sync_catalog_orders": run_sync_orders,
-        "sync_catalog_quotes": run_sync_quotes,
-        "sync_catalog_categories": run_sync_categories,
-        "sync_catalog_accounts": run_sync_accounts,
-        "sync_catalog_account_categories": run_sync_account_categories,
-        "sync_catalog_accounting_journals": run_sync_accounting_journals,
-        "sync_catalog_webhooks": run_sync_webhooks,
-        "sync_catalog_webhook_subscriptions": run_sync_webhook_subscriptions,
-        "sync_catalog_invoices": run_sync_invoices,
-    }
+    # Usar el dispatcher dinámico en lugar de mapeo hardcodeado
+    async def run_now():
+        return await run_dynamic_job(job_id, job.name)
 
-    runner = job_runners.get(job_id)
-    if not runner:
-        raise HTTPException(status_code=400, detail=f"Job '{job_id}' no puede ejecutarse manualmente")
-
-    background_tasks.add_task(runner)
+    background_tasks.add_task(run_now)
     add_to_history(job_id, job.name, "manual_run")
     logger.info(f"Job '{job_id}' ejecutado manualmente")
 
@@ -1258,15 +1236,8 @@ async def admin_update_operating_hours(job_id: str, start_hour: int, end_hour: i
 @app.get("/api/admin/stats")
 async def admin_get_stats():
     """Obtiene estadísticas generales del sistema."""
-    bind_ok = None
+    from company_services import get_active_companies
     smartsheet_ok = None
-
-    try:
-        if settings.BIND_API_KEY:
-            bind_client = BindClient()
-            bind_ok = bind_client.health_check()
-    except Exception:
-        bind_ok = False
 
     try:
         if settings.SMARTSHEET_ACCESS_TOKEN:
@@ -1275,20 +1246,44 @@ async def admin_get_stats():
     except Exception:
         smartsheet_ok = False
 
+    # Verificar conectividad Bind por empresa
+    companies = get_active_companies()
+    bind_status = {}
+    for company in companies:
+        try:
+            from company_services import get_bind_client_for_company
+            client = get_bind_client_for_company(company.id)
+            bind_status[company.id] = client.health_check()
+        except Exception:
+            bind_status[company.id] = False
+
     # Contar ejecuciones exitosas/fallidas
     successful = sum(1 for h in job_history if h["status"] in ["completed", "manual_run"])
     failed = sum(1 for h in job_history if h["status"] == "failed")
+
+    # Agrupar jobs por empresa
+    jobs_by_company = {}
+    for job in scheduler.get_jobs():
+        config = get_process_config(job.id)
+        cid = config.company_id if config else "legacy"
+        jobs_by_company.setdefault(cid, 0)
+        jobs_by_company[cid] += 1
 
     return {
         "success": True,
         "timestamp": datetime.now(CDMX_TZ).isoformat(),
         "connections": {
-            "bind": bind_ok,
             "smartsheet": smartsheet_ok,
+            "bind": bind_status,
+        },
+        "companies": {
+            "total": len(companies),
+            "active": [c.id for c in companies],
         },
         "scheduler": {
             "running": scheduler.running,
             "job_count": len(scheduler.get_jobs()),
+            "jobs_by_company": jobs_by_company,
         },
         "history": {
             "total": len(job_history),
@@ -1298,15 +1293,184 @@ async def admin_get_stats():
     }
 
 
-# ========== API DE CONFIGURACIÓN DE PROCESOS ==========
+# ========== API DE EMPRESAS ==========
 
-@app.get("/api/admin/process-configs")
-async def admin_get_process_configs():
-    """Obtiene todas las configuraciones de procesos desde la base de datos."""
-    configs = get_all_process_configs()
+
+class CompanyCreate(BaseModel):
+    id: str
+    name: str
+    bind_api_key: str
+    bind_api_base_url: str = "https://api.bind.com.mx/api"
+    smartsheet_workspace_id: Optional[str] = None
+    bind_warehouse_id: Optional[str] = None
+    is_active: bool = True
+
+
+class CompanyUpdate(BaseModel):
+    name: Optional[str] = None
+    bind_api_key: Optional[str] = None
+    bind_api_base_url: Optional[str] = None
+    smartsheet_workspace_id: Optional[str] = None
+    bind_warehouse_id: Optional[str] = None
+    is_active: Optional[bool] = None
+
+
+@app.get("/api/admin/companies")
+async def admin_list_companies():
+    """Lista todas las empresas registradas."""
+    from database import get_all_companies
+    companies = get_all_companies()
     return {
         "success": True,
         "timestamp": datetime.now(CDMX_TZ).isoformat(),
+        "companies": [c.to_dict() for c in companies],
+    }
+
+
+@app.get("/api/admin/companies/{company_id}")
+async def admin_get_company(company_id: str):
+    """Obtiene los datos de una empresa."""
+    from database import get_company
+    company = get_company(company_id)
+    if not company:
+        raise HTTPException(status_code=404, detail=f"Empresa '{company_id}' no encontrada")
+
+    # Incluir sus ProcessConfigs
+    configs = get_all_process_configs(company_id=company_id)
+    scheduler_jobs = [
+        {"id": j.id, "name": j.name, "next_run": j.next_run_time.isoformat() if j.next_run_time else None}
+        for j in scheduler.get_jobs()
+        if get_process_config(j.id) and get_process_config(j.id).company_id == company_id
+    ]
+
+    return {
+        "success": True,
+        "company": company.to_dict(),
+        "process_configs": [c.to_dict() for c in configs],
+        "scheduler_jobs": scheduler_jobs,
+    }
+
+
+@app.post("/api/admin/companies")
+async def admin_create_company(company: CompanyCreate):
+    """Crea una nueva empresa y genera sus ProcessConfigs por defecto."""
+    from database import get_company, create_or_update_company, seed_company_default_configs
+
+    if get_company(company.id):
+        raise HTTPException(status_code=409, detail=f"Empresa '{company.id}' ya existe")
+
+    new_company = create_or_update_company(
+        company_id=company.id,
+        name=company.name,
+        bind_api_key=company.bind_api_key,
+        bind_api_base_url=company.bind_api_base_url,
+        smartsheet_workspace_id=company.smartsheet_workspace_id,
+        bind_warehouse_id=company.bind_warehouse_id,
+        is_active=company.is_active,
+    )
+
+    # Crear ProcessConfigs por defecto (inactivos)
+    configs_created = seed_company_default_configs(company.id)
+
+    logger.info(f"Empresa '{company.id}' creada con {configs_created} ProcessConfigs")
+
+    return {
+        "success": True,
+        "message": f"Empresa '{company.id}' creada con {configs_created} procesos configurados",
+        "company": new_company.to_dict(),
+    }
+
+
+@app.put("/api/admin/companies/{company_id}")
+async def admin_update_company(company_id: str, update: CompanyUpdate):
+    """Actualiza los datos de una empresa."""
+    from database import get_company, create_or_update_company
+
+    existing = get_company(company_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Empresa '{company_id}' no encontrada")
+
+    updated = create_or_update_company(
+        company_id=company_id,
+        name=update.name or existing.name,
+        bind_api_key=update.bind_api_key or existing.bind_api_key,
+        bind_api_base_url=update.bind_api_base_url or existing.bind_api_base_url,
+        smartsheet_workspace_id=update.smartsheet_workspace_id if update.smartsheet_workspace_id is not None else existing.smartsheet_workspace_id,
+        bind_warehouse_id=update.bind_warehouse_id if update.bind_warehouse_id is not None else existing.bind_warehouse_id,
+        is_active=update.is_active if update.is_active is not None else existing.is_active,
+    )
+
+    # Si cambió is_active, actualizar scheduler
+    if update.is_active is not None:
+        schedule_company_jobs(company_id)
+
+    return {
+        "success": True,
+        "message": f"Empresa '{company_id}' actualizada",
+        "company": updated.to_dict(),
+    }
+
+
+@app.delete("/api/admin/companies/{company_id}")
+async def admin_deactivate_company(company_id: str):
+    """Desactiva una empresa (soft delete) y remueve sus jobs del scheduler."""
+    from database import get_company, delete_company
+
+    existing = get_company(company_id)
+    if not existing:
+        raise HTTPException(status_code=404, detail=f"Empresa '{company_id}' no encontrada")
+
+    delete_company(company_id)
+
+    # Remover jobs de esta empresa del scheduler
+    removed = 0
+    for job in scheduler.get_jobs():
+        config = get_process_config(job.id)
+        if config and config.company_id == company_id:
+            scheduler.remove_job(job.id)
+            removed += 1
+
+    logger.info(f"Empresa '{company_id}' desactivada, {removed} jobs removidos")
+
+    return {
+        "success": True,
+        "message": f"Empresa '{company_id}' desactivada, {removed} jobs removidos del scheduler",
+    }
+
+
+@app.post("/api/admin/companies/{company_id}/test-connection")
+async def admin_test_company_connection(company_id: str):
+    """Prueba la conexión a Bind ERP con las credenciales de una empresa."""
+    from company_services import get_bind_client_for_company, CompanyNotFoundError
+
+    try:
+        client = get_bind_client_for_company(company_id)
+        bind_ok = client.health_check()
+        return {
+            "success": True,
+            "bind_connected": bind_ok,
+            "message": "Conexión exitosa" if bind_ok else "No se pudo conectar a Bind",
+        }
+    except CompanyNotFoundError:
+        raise HTTPException(status_code=404, detail=f"Empresa '{company_id}' no encontrada")
+    except Exception as e:
+        return {
+            "success": False,
+            "bind_connected": False,
+            "message": f"Error: {e}",
+        }
+
+
+# ========== API DE CONFIGURACIÓN DE PROCESOS ==========
+
+@app.get("/api/admin/process-configs")
+async def admin_get_process_configs(company_id: Optional[str] = None):
+    """Obtiene configuraciones de procesos, opcionalmente filtradas por empresa."""
+    configs = get_all_process_configs(company_id=company_id)
+    return {
+        "success": True,
+        "timestamp": datetime.now(CDMX_TZ).isoformat(),
+        "company_id": company_id,
         "configs": [c.to_dict() for c in configs],
     }
 
