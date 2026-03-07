@@ -153,6 +153,9 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# Static files
+app.mount("/static", StaticFiles(directory=Path(__file__).parent / "static"), name="static")
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
