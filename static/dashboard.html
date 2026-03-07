@@ -1716,8 +1716,15 @@
                         <span class="material-icons-outlined">sync</span>
                         Procesos Programados
                     </h2>
-                    <div id="company-filter" style="display:flex;gap:6px;align-items:center">
-                        <button class="company-filter-btn active" data-company="all" onclick="filterByCompany('all')">Todas</button>
+                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+                        <div id="company-filter" style="display:flex;gap:6px;align-items:center">
+                            <button class="company-filter-btn active" data-company="all" onclick="filterByCompany('all')">Todas</button>
+                        </div>
+                        <div id="status-filter" style="display:flex;gap:6px;align-items:center">
+                            <button class="company-filter-btn active" data-status="all" onclick="filterByStatus('all')">Todos</button>
+                            <button class="company-filter-btn" data-status="active" onclick="filterByStatus('active')">Activos</button>
+                            <button class="company-filter-btn" data-status="inactive" onclick="filterByStatus('inactive')">Inactivos</button>
+                        </div>
                     </div>
                 </div>
                 <div id="jobs-container" class="card-content">
@@ -2134,20 +2141,31 @@
         // Load jobs
         let allProcessConfigs = [];
         let currentCompanyFilter = 'all';
+        let currentStatusFilter = 'all';
 
         function filterByCompany(companyId) {
             currentCompanyFilter = companyId;
-            document.querySelectorAll('.company-filter-btn').forEach(btn => {
+            document.querySelectorAll('#company-filter .company-filter-btn').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.company === companyId);
+            });
+            renderJobs();
+        }
+
+        function filterByStatus(status) {
+            currentStatusFilter = status;
+            document.querySelectorAll('#status-filter .company-filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.status === status);
             });
             renderJobs();
         }
 
         function renderJobs() {
             const container = document.getElementById('jobs-container');
-            const filtered = currentCompanyFilter === 'all'
+            let filtered = currentCompanyFilter === 'all'
                 ? allProcessConfigs
                 : allProcessConfigs.filter(c => c.company_id === currentCompanyFilter);
+            if (currentStatusFilter === 'active') filtered = filtered.filter(c => c.is_active);
+            else if (currentStatusFilter === 'inactive') filtered = filtered.filter(c => !c.is_active);
 
             if (filtered.length === 0) {
                 container.innerHTML = `<div class="empty-state"><span class="material-icons-outlined">event_busy</span><p>No hay procesos configurados</p></div>`;
