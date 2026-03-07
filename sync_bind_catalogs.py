@@ -13,10 +13,11 @@ from smartsheet.models import Cell, Row
 
 from bind_client import BindClient
 from config import settings
+from company_services import get_bind_client_for_company, get_workspace_id_for_company
 
 logger = logging.getLogger(__name__)
 CDMX_TZ = ZoneInfo("America/Mexico_City")
-WORKSPACE_ID = 75095659046788
+WORKSPACE_ID = 75095659046788  # Default AWALab (legacy)
 
 # Días hacia atrás para filtrar registros con fecha (orders, quotes)
 DAYS_LOOKBACK = 7  # Solo registros de la última semana
@@ -473,8 +474,22 @@ CATALOG_CONFIGS = {
 class BindCatalogSync:
     """Clase para sincronizar catálogos de Bind a Smartsheet."""
 
-    def __init__(self):
-        self.bind_client = BindClient()
+    def __init__(self, company_id: str = None):
+        """Inicializa el sincronizador de catálogos.
+
+        Args:
+            company_id: ID de empresa. Si se proporciona, usa sus credenciales.
+                        Si es None, usa config global (legacy/backwards-compat).
+        """
+        self.company_id = company_id
+
+        if company_id:
+            self.bind_client = get_bind_client_for_company(company_id)
+            self.workspace_id = get_workspace_id_for_company(company_id) or WORKSPACE_ID
+        else:
+            self.bind_client = BindClient()
+            self.workspace_id = WORKSPACE_ID
+
         self.ss_client = smartsheet.Smartsheet(settings.SMARTSHEET_ACCESS_TOKEN)
         self.ss_client.errors_as_exceptions(True)
         self._sheet_cache = {}  # {catalog_name: sheet_id}
@@ -487,7 +502,7 @@ class BindCatalogSync:
 
         # Buscar en workspace
         try:
-            ws = self.ss_client.Workspaces.get_workspace(WORKSPACE_ID)
+            ws = self.ss_client.Workspaces.get_workspace(self.workspace_id)
             for sheet in ws.sheets:
                 if sheet.name == config["sheet_name"]:
                     self._sheet_cache[catalog_name] = sheet.id
@@ -511,7 +526,7 @@ class BindCatalogSync:
 
         try:
             response = self.ss_client.Workspaces.create_sheet_in_workspace(
-                WORKSPACE_ID, sheet_spec
+                self.workspace_id, sheet_spec
             )
             sheet_id = response.result.id
             self._sheet_cache[catalog_name] = sheet_id
@@ -843,25 +858,26 @@ class BindCatalogSync:
         return results
 
 
-def sync_bind_catalog(catalog_name: str, force_full_load: bool = False) -> dict:
+def sync_bind_catalog(catalog_name: str, force_full_load: bool = False, company_id: str = None) -> dict:
     """Función pública para sincronizar un catálogo.
 
     Args:
         catalog_name: Nombre del catálogo a sincronizar
         force_full_load: Si True, obtiene todos los registros ignorando el filtro de fecha
+        company_id: ID de empresa. Si se proporciona, usa sus credenciales.
 
     Comportamiento:
         - Si la hoja tiene <10 registros: CARGA INICIAL (todos los datos)
         - Si la hoja tiene >=10 registros: INCREMENTAL (solo últimos 7 días con UPSERT)
         - Si force_full_load=True: CARGA COMPLETA (todos los datos, ignorando registros existentes)
     """
-    syncer = BindCatalogSync()
+    syncer = BindCatalogSync(company_id=company_id)
     return syncer.sync_catalog(catalog_name, force_full_load=force_full_load)
 
 
-def sync_all_bind_catalogs() -> dict:
+def sync_all_bind_catalogs(company_id: str = None) -> dict:
     """Función pública para sincronizar todos los catálogos."""
-    syncer = BindCatalogSync()
+    syncer = BindCatalogSync(company_id=company_id)
     return syncer.sync_all_catalogs()
 
 

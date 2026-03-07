@@ -36,6 +36,7 @@ from config import settings
 from smartsheet_service import SmartsheetService
 from database import init_db, seed_default_configs, get_process_config, get_all_process_configs, create_or_update_process_config, SessionLocal, ProcessConfig
 from sync_bind_catalogs import sync_bind_catalog
+from company_services import get_bind_client_for_company, get_warehouse_id_for_company
 
 # ========== CONFIGURACIÓN DE LOGGING ==========
 
@@ -260,55 +261,57 @@ def is_within_operating_hours(job_id: str) -> bool:
     return start_hour <= now.hour < end_hour
 
 
-async def run_inventory_sync():
+async def run_inventory_sync(job_id: str = "sync_inventory"):
     """Ejecuta la sincronización de inventario."""
     # Verificar horario operativo
-    if not is_within_operating_hours("sync_inventory"):
-        logger.info("Sincronización de inventario omitida - fuera de horario operativo")
+    if not is_within_operating_hours(job_id):
+        logger.info(f"Sincronización de inventario ({job_id}) omitida - fuera de horario operativo")
         return {"success": True, "skipped": True, "reason": "Fuera de horario operativo"}
 
-    logger.info("Ejecutando sincronización programada de inventario...")
+    logger.info(f"Ejecutando sincronización programada de inventario ({job_id})...")
     try:
-        # Obtener sheet_id desde la base de datos
-        config = get_process_config("sync_inventory")
+        # Obtener config desde la base de datos
+        config = get_process_config(job_id)
         sheet_id = int(config.smartsheet_sheet_id) if config and config.smartsheet_sheet_id else None
+        company_id = config.company_id if config else None
 
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, lambda: sync_inventory(sheet_id=sheet_id))
+        result = await loop.run_in_executor(None, lambda: sync_inventory(sheet_id=sheet_id, company_id=company_id))
         logger.info(f"Sincronización completada: {result}")
         # Registrar en historial
-        add_to_history("sync_inventory", "Sincronización de Inventario",
+        add_to_history(job_id, "Sincronización de Inventario",
                       "completed" if result.get("success") else "failed", result)
         return result
     except Exception as e:
-        logger.error(f"Error en sincronización de inventario: {e}")
-        add_to_history("sync_inventory", "Sincronización de Inventario", "failed", {"error": str(e)})
+        logger.error(f"Error en sincronización de inventario ({job_id}): {e}")
+        add_to_history(job_id, "Sincronización de Inventario", "failed", {"error": str(e)})
         raise
 
 
-async def run_invoices_sync():
+async def run_invoices_sync(job_id: str = "sync_invoices"):
     """Ejecuta la sincronización de facturas Bind -> Smartsheet."""
     # Verificar horario operativo
-    if not is_within_operating_hours("sync_invoices"):
-        logger.info("Sincronización de facturas omitida - fuera de horario operativo")
+    if not is_within_operating_hours(job_id):
+        logger.info(f"Sincronización de facturas ({job_id}) omitida - fuera de horario operativo")
         return {"success": True, "skipped": True, "reason": "Fuera de horario operativo"}
 
-    logger.info("Ejecutando sincronización programada de facturas...")
+    logger.info(f"Ejecutando sincronización programada de facturas ({job_id})...")
     try:
-        # Obtener sheet_id desde la base de datos
-        config = get_process_config("sync_invoices")
+        # Obtener config desde la base de datos
+        config = get_process_config(job_id)
         sheet_id = int(config.smartsheet_sheet_id) if config and config.smartsheet_sheet_id else None
+        company_id = config.company_id if config else None
 
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, lambda: sync_invoices_from_bind(sheet_id=sheet_id))
+        result = await loop.run_in_executor(None, lambda: sync_invoices_from_bind(sheet_id=sheet_id, company_id=company_id))
         logger.info(f"Sincronización de facturas completada: {result}")
         # Registrar en historial
-        add_to_history("sync_invoices", "Sincronización de Facturas",
+        add_to_history(job_id, "Sincronización de Facturas",
                       "completed" if result.get("success") else "failed", result)
         return result
     except Exception as e:
-        logger.error(f"Error en sincronización de facturas: {e}")
-        add_to_history("sync_invoices", "Sincronización de Facturas", "failed", {"error": str(e)})
+        logger.error(f"Error en sincronización de facturas ({job_id}): {e}")
+        add_to_history(job_id, "Sincronización de Facturas", "failed", {"error": str(e)})
         raise
 
 
@@ -319,10 +322,14 @@ async def run_catalog_sync(catalog_name: str, job_id: str, job_name: str):
         logger.info(f"Sincronización de {catalog_name} omitida - fuera de horario operativo")
         return {"success": True, "skipped": True, "reason": "Fuera de horario operativo"}
 
-    logger.info(f"Ejecutando sincronización de catálogo: {catalog_name}...")
+    # Obtener company_id del ProcessConfig
+    config = get_process_config(job_id)
+    company_id = config.company_id if config else None
+
+    logger.info(f"Ejecutando sincronización de catálogo: {catalog_name} (empresa: {company_id or 'default'})...")
     try:
         loop = asyncio.get_event_loop()
-        result = await loop.run_in_executor(None, lambda: sync_bind_catalog(catalog_name))
+        result = await loop.run_in_executor(None, lambda: sync_bind_catalog(catalog_name, company_id=company_id))
         logger.info(f"Sincronización de {catalog_name} completada: {result}")
         add_to_history(job_id, job_name, "completed" if result.get("success") else "failed", result)
         return result

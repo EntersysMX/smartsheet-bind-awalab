@@ -5,7 +5,7 @@
 ## Fases
 
 - [x] Fase 1: Modelo de datos (Company + migración ProcessConfig)
-- [ ] Fase 2: Services dinámicos (BindClient/catalogs por empresa)
+- [x] Fase 2: Services dinámicos (BindClient/catalogs por empresa)
 - [ ] Fase 3: Scheduler dinámico (jobs por empresa)
 - [ ] Fase 4: API Admin + Dashboard multi-empresa
 - [ ] Fase 5: Migración datos AWALab existentes

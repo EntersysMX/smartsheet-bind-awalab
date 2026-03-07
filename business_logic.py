@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, field_validator
 from bind_client import BindClient, BindAPIError
 from smartsheet_service import SmartsheetService, SmartsheetServiceError
 from config import settings, REQUIRED_INVOICE_COLUMNS
+from company_services import get_bind_client_for_company, get_warehouse_id_for_company
 
 logger = logging.getLogger(__name__)
 
@@ -379,6 +380,7 @@ def sync_inventory(
     bind_client: BindClient = None,
     sheet_id: int = None,
     warehouse_id: str = None,
+    company_id: str = None,
 ) -> dict:
     """
     Sincroniza el inventario de Bind ERP a Smartsheet con lógica UPSERT.
@@ -401,9 +403,11 @@ def sync_inventory(
     cdmx_tz = ZoneInfo("America/Mexico_City")
 
     ss_service = ss_service or SmartsheetService()
-    bind_client = bind_client or BindClient()
+    if not bind_client:
+        bind_client = get_bind_client_for_company(company_id) if company_id else BindClient()
     sheet_id = sheet_id or settings.SMARTSHEET_INVENTORY_SHEET_ID
-    warehouse_id = warehouse_id or settings.BIND_WAREHOUSE_ID
+    if not warehouse_id:
+        warehouse_id = get_warehouse_id_for_company(company_id) if company_id else settings.BIND_WAREHOUSE_ID
 
     now_cdmx = datetime.now(cdmx_tz)
 
@@ -719,6 +723,7 @@ def sync_invoices_from_bind(
     bind_client: BindClient = None,
     sheet_id: int = None,
     minutes_lookback: int = 10,
+    company_id: str = None,
 ) -> dict:
     """
     Sincroniza facturas de Bind ERP a Smartsheet (UPSERT).
@@ -739,7 +744,8 @@ def sync_invoices_from_bind(
     from zoneinfo import ZoneInfo
 
     ss_service = ss_service or SmartsheetService()
-    bind_client = bind_client or BindClient()
+    if not bind_client:
+        bind_client = get_bind_client_for_company(company_id) if company_id else BindClient()
     sheet_id = sheet_id or settings.SMARTSHEET_INVOICES_SHEET_ID
 
     # Zona horaria de CDMX
