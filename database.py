@@ -161,6 +161,42 @@ def migrate_existing_to_company(company_id: str):
         db.close()
 
 
+def migrate_legacy_job_ids(company_id: str):
+    """Renombra job_ids legacy (sin prefijo) al formato '{company_id}__{job_type}'.
+
+    Ej: 'sync_inventory' → 'awalab__sync_inventory'
+    Solo afecta jobs que pertenecen a la empresa indicada y no tienen prefijo.
+    """
+    db = SessionLocal()
+    try:
+        configs = db.query(ProcessConfig).filter(
+            ProcessConfig.company_id == company_id
+        ).all()
+
+        renamed = 0
+        for config in configs:
+            # Solo renombrar si no tiene prefijo de empresa
+            if "__" not in config.job_id:
+                new_job_id = f"{company_id}__{config.job_id}"
+                # Verificar que el nuevo job_id no exista
+                existing = db.query(ProcessConfig).filter(
+                    ProcessConfig.job_id == new_job_id
+                ).first()
+                if not existing:
+                    old_id = config.job_id
+                    config.job_id = new_job_id
+                    config.updated_at = datetime.now(CDMX_TZ)
+                    renamed += 1
+                    logger.info(f"Job renombrado: '{old_id}' → '{new_job_id}'")
+
+        if renamed:
+            db.commit()
+            logger.info(f"Migrados {renamed} job_ids al formato prefijado para '{company_id}'")
+        return renamed
+    finally:
+        db.close()
+
+
 # ========== COMPANY CRUD ==========
 
 def get_company(company_id: str) -> Optional[Company]:
@@ -370,14 +406,18 @@ def seed_default_configs():
 
     # Migrar configs existentes sin company_id
     migrate_existing_to_company("awalab")
+    # Migrar job_ids legacy al formato prefijado
+    migrate_legacy_job_ids("awalab")
 
     db = SessionLocal()
     try:
         # Proceso de sincronización de inventario - solo crear si no existe
-        existing_inventory = db.query(ProcessConfig).filter(ProcessConfig.job_id == "sync_inventory").first()
+        existing_inventory = db.query(ProcessConfig).filter(
+            (ProcessConfig.job_id == "awalab__sync_inventory") | (ProcessConfig.job_id == "sync_inventory")
+        ).first()
         if not existing_inventory:
             create_or_update_process_config(
-                job_id="sync_inventory",
+                job_id="awalab__sync_inventory",
                 company_id="awalab",
                 name="Sincronización de Inventario",
                 description="Sincroniza el inventario desde Bind ERP hacia Smartsheet. Obtiene productos con existencias del almacén configurado y actualiza la hoja de inventario.",
@@ -398,10 +438,12 @@ def seed_default_configs():
             logger.info("Configuración de inventario existente preservada")
 
         # Proceso de sincronización de facturas - solo crear si no existe
-        existing_invoices = db.query(ProcessConfig).filter(ProcessConfig.job_id == "sync_invoices").first()
+        existing_invoices = db.query(ProcessConfig).filter(
+            (ProcessConfig.job_id == "awalab__sync_invoices") | (ProcessConfig.job_id == "sync_invoices")
+        ).first()
         if not existing_invoices:
             create_or_update_process_config(
-                job_id="sync_invoices",
+                job_id="awalab__sync_invoices",
                 company_id="awalab",
                 name="Sincronización de Facturas Bind -> Smartsheet",
                 description="Sincroniza facturas creadas en Bind ERP hacia Smartsheet. Obtiene facturas de los últimos 10 minutos y realiza UPSERT (actualiza existentes por UUID o inserta nuevas).",
@@ -442,11 +484,15 @@ def seed_default_configs():
             ("sync_catalog_invoices", "Sync Catálogo - Facturas", "Sincroniza facturas emitidas"),
         ]
 
-        for job_id, name, description in catalog_configs:
-            existing = db.query(ProcessConfig).filter(ProcessConfig.job_id == job_id).first()
+        for base_job_id, name, description in catalog_configs:
+            prefixed_id = f"awalab__{base_job_id}"
+            # Buscar tanto el formato nuevo como el legacy
+            existing = db.query(ProcessConfig).filter(
+                (ProcessConfig.job_id == prefixed_id) | (ProcessConfig.job_id == base_job_id)
+            ).first()
             if not existing:
                 create_or_update_process_config(
-                    job_id=job_id,
+                    job_id=prefixed_id,
                     company_id="awalab",
                     name=name,
                     description=description,
@@ -458,7 +504,7 @@ def seed_default_configs():
                     target_system="smartsheet",
                     sync_direction="pull",
                 )
-                logger.info(f"Configuración de {job_id} creada")
+                logger.info(f"Configuración de {prefixed_id} creada")
     finally:
         db.close()
 

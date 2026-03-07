@@ -938,8 +938,9 @@ async def admin_list_jobs():
             trigger_info["interval_seconds"] = job.trigger.interval.total_seconds()
             trigger_info["interval_minutes"] = job.trigger.interval.total_seconds() / 60
 
-        # Obtener metadatos del job (primero de JOB_METADATA, luego de DB como fallback)
-        metadata = JOB_METADATA.get(job.id, {})
+        # Obtener metadatos del job (por job_id o por base_type)
+        _, base_type_for_meta = parse_job_id(job.id)
+        metadata = JOB_METADATA.get(job.id) or JOB_METADATA.get(base_type_for_meta, {})
         last_run = job_last_run.get(job.id, {})
 
         # Si no hay metadatos hardcodeados, leer de la base de datos
@@ -978,7 +979,8 @@ async def admin_get_job_details(job_id: str):
     if not job:
         raise HTTPException(status_code=404, detail=f"Job '{job_id}' no encontrado")
 
-    metadata = JOB_METADATA.get(job_id, {})
+    _, base_type_for_meta = parse_job_id(job_id)
+    metadata = JOB_METADATA.get(job_id) or JOB_METADATA.get(base_type_for_meta, {})
     last_run = job_last_run.get(job_id, {})
 
     # Obtener configuración de la base de datos
@@ -1023,7 +1025,7 @@ async def admin_get_job_details(job_id: str):
     source = metadata.get("source") or (f"{db_config.source_system} → {db_config.target_system}" if db_config and db_config.source_system else "")
     sheet_id = metadata.get("sheet_id") or (db_config.smartsheet_sheet_id if db_config else "")
     sheet_name = db_config.smartsheet_sheet_name if db_config else ""
-    endpoint = metadata.get("endpoint") or catalog_endpoints.get(job_id, "")
+    endpoint = metadata.get("endpoint") or catalog_endpoints.get(job_id) or catalog_endpoints.get(base_type_for_meta, "")
 
     # Generar details_html para jobs de catálogo si no hay uno hardcodeado
     if not metadata.get("details") and db_config:
