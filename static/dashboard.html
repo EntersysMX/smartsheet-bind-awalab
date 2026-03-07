@@ -450,6 +450,20 @@
             }
         }
 
+        /* ===== Company Filter ===== */
+        .company-filter-btn {
+            padding: 4px 12px;
+            border-radius: 16px;
+            border: 1px solid #444;
+            background: transparent;
+            color: #aaa;
+            font-size: 0.78rem;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .company-filter-btn:hover { border-color: #90caf9; color: #90caf9; }
+        .company-filter-btn.active { background: #1e3a5f; color: #90caf9; border-color: #1e3a5f; }
+
         /* ===== Job Card ===== */
         .job-card {
             background: var(--md-sys-color-surface-container);
@@ -1697,11 +1711,14 @@
         <div class="content-grid">
             <!-- Jobs Section -->
             <div class="card">
-                <div class="card-header">
+                <div class="card-header" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px">
                     <h2 class="card-title">
                         <span class="material-icons-outlined">sync</span>
                         Procesos Programados
                     </h2>
+                    <div id="company-filter" style="display:flex;gap:6px;align-items:center">
+                        <button class="company-filter-btn active" data-company="all" onclick="filterByCompany('all')">Todas</button>
+                    </div>
                 </div>
                 <div id="jobs-container" class="card-content">
                     <div class="empty-state">
@@ -2115,90 +2132,126 @@
         }
 
         // Load jobs
-        async function loadJobs() {
-            try {
-                const res = await fetch('/api/admin/jobs');
-                const data = await res.json();
+        let allProcessConfigs = [];
+        let currentCompanyFilter = 'all';
 
-                const container = document.getElementById('jobs-container');
+        function filterByCompany(companyId) {
+            currentCompanyFilter = companyId;
+            document.querySelectorAll('.company-filter-btn').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.company === companyId);
+            });
+            renderJobs();
+        }
 
-                if (data.jobs.length === 0) {
-                    container.innerHTML = `
-                        <div class="empty-state">
-                            <span class="material-icons-outlined">event_busy</span>
-                            <p>No hay procesos configurados</p>
-                        </div>
-                    `;
-                    return;
-                }
+        function renderJobs() {
+            const container = document.getElementById('jobs-container');
+            const filtered = currentCompanyFilter === 'all'
+                ? allProcessConfigs
+                : allProcessConfigs.filter(c => c.company_id === currentCompanyFilter);
 
-                container.innerHTML = data.jobs.map(job => {
-                    const isPaused = !job.next_run;
-                    const intervalMin = job.trigger.interval_minutes ? Math.round(job.trigger.interval_minutes) : '-';
-                    const isInvoices = job.id === 'sync_invoices';
+            if (filtered.length === 0) {
+                container.innerHTML = `<div class="empty-state"><span class="material-icons-outlined">event_busy</span><p>No hay procesos configurados</p></div>`;
+                return;
+            }
 
-                    return `
-                        <div class="job-card">
-                            <div class="job-card-header">
-                                <div class="job-icon ${isInvoices ? 'invoices' : 'inventory'}">
-                                    <span class="material-icons">${isInvoices ? 'receipt_long' : 'inventory_2'}</span>
-                                </div>
-                                <div class="job-info">
-                                    <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
-                                        <span class="job-name">${job.name}</span>
-                                        ${job.company_id ? `<span style="background:#1e3a5f;color:#90caf9;font-size:0.65rem;padding:2px 6px;border-radius:8px;margin-left:6px">${job.company_id}</span>` : ''}
-                                        <span class="job-status-chip ${isPaused ? 'paused' : 'active'}">
-                                            <span class="material-icons" style="font-size: 14px;">${isPaused ? 'pause' : 'check_circle'}</span>
-                                            ${isPaused ? 'Pausado' : 'Activo'}
-                                        </span>
-                                    </div>
-                                    <p class="job-description">${job.description || ''}</p>
-                                    ${job.source ? `<p style="color: var(--md-sys-color-primary); font-size: 0.75rem; margin-top: 4px;">${job.source}</p>` : ''}
-                                </div>
+            container.innerHTML = filtered.map(cfg => {
+                const isActive = cfg.is_active;
+                const intervalMin = cfg.interval_minutes || '-';
+                const isInvoices = cfg.job_id.includes('sync_invoices') || cfg.job_id.includes('sync_catalog_invoices');
+                const source = cfg.source_system && cfg.target_system ? `${cfg.source_system} → ${cfg.target_system}` : '';
+
+                return `
+                    <div class="job-card" style="${!isActive ? 'opacity:0.6' : ''}">
+                        <div class="job-card-header">
+                            <div class="job-icon ${isInvoices ? 'invoices' : 'inventory'}">
+                                <span class="material-icons">${isInvoices ? 'receipt_long' : 'inventory_2'}</span>
                             </div>
-
-                            <div class="job-meta">
-                                <div class="job-meta-item">
-                                    <span class="job-meta-label">Intervalo</span>
-                                    <span class="job-meta-value editable" onclick="openIntervalModal('${job.id}', '${job.name}', ${intervalMin})" title="Clic para editar">
-                                        ${intervalMin} min
-                                        <span class="material-icons">edit</span>
+                            <div class="job-info">
+                                <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                    <span class="job-name">${cfg.name}</span>
+                                    ${cfg.company_id ? `<span style="background:#1e3a5f;color:#90caf9;font-size:0.65rem;padding:2px 6px;border-radius:8px;margin-left:6px">${cfg.company_id}</span>` : ''}
+                                    <span class="job-status-chip ${isActive ? 'active' : 'paused'}">
+                                        <span class="material-icons" style="font-size: 14px;">${isActive ? 'check_circle' : 'pause'}</span>
+                                        ${isActive ? 'Activo' : 'Inactivo'}
                                     </span>
                                 </div>
-                                <div class="job-meta-item">
-                                    <span class="job-meta-label">Proxima ejecucion</span>
-                                    <span class="job-meta-value">${formatDate(job.next_run)}</span>
-                                </div>
+                                <p class="job-description">${cfg.description || ''}</p>
+                                ${source ? `<p style="color: var(--md-sys-color-primary); font-size: 0.75rem; margin-top: 4px;">${source}</p>` : ''}
                             </div>
+                        </div>
 
-                            <button class="job-details-btn ${isInvoices ? '' : 'inventory'}" onclick="openDetailsModal('${job.id}')">
-                                <span class="material-icons">visibility</span>
-                                Ver Detalles del Proceso
-                            </button>
+                        <div class="job-meta">
+                            <div class="job-meta-item">
+                                <span class="job-meta-label">Intervalo</span>
+                                <span class="job-meta-value editable" onclick="openIntervalModal('${cfg.job_id}', '${cfg.name}', ${intervalMin})" title="Clic para editar">
+                                    ${intervalMin} min
+                                    <span class="material-icons">edit</span>
+                                </span>
+                            </div>
+                            <div class="job-meta-item">
+                                <span class="job-meta-label">Sheet</span>
+                                <span class="job-meta-value" style="font-size:0.7rem">${cfg.smartsheet_sheet_name || cfg.smartsheet_sheet_id || 'Sin asignar'}</span>
+                            </div>
+                        </div>
 
-                            <div class="job-actions">
-                                <button class="btn btn-tonal" onclick="runJob('${job.id}')">
+                        <div class="job-actions">
+                            ${isActive ? `
+                                <button class="btn btn-tonal" onclick="runJob('${cfg.job_id}')">
                                     <span class="material-icons">play_arrow</span>
                                     Ejecutar
                                 </button>
-                                ${isPaused ? `
-                                    <button class="btn btn-outlined" style="border-color: var(--md-sys-color-success); color: var(--md-sys-color-success);" onclick="resumeJob('${job.id}')">
-                                        <span class="material-icons">play_circle</span>
-                                        Reanudar
-                                    </button>
-                                ` : `
-                                    <button class="btn btn-outlined" style="border-color: var(--md-sys-color-warning); color: var(--md-sys-color-warning);" onclick="pauseJob('${job.id}')">
-                                        <span class="material-icons">pause_circle</span>
-                                        Pausar
-                                    </button>
-                                `}
-                                <button class="btn btn-icon btn-text" onclick="openIntervalModal('${job.id}', '${job.name}', ${intervalMin})" title="Cambiar intervalo">
-                                    <span class="material-icons">timer</span>
+                                <button class="btn btn-outlined" style="border-color: var(--md-sys-color-warning); color: var(--md-sys-color-warning);" onclick="toggleProcessActive('${cfg.job_id}', false)">
+                                    <span class="material-icons">pause_circle</span>
+                                    Desactivar
                                 </button>
-                            </div>
+                            ` : `
+                                <button class="btn btn-outlined" style="border-color: var(--md-sys-color-success); color: var(--md-sys-color-success);" onclick="toggleProcessActive('${cfg.job_id}', true)">
+                                    <span class="material-icons">play_circle</span>
+                                    Activar
+                                </button>
+                            `}
+                            <button class="btn btn-icon btn-text" onclick="openIntervalModal('${cfg.job_id}', '${cfg.name}', ${intervalMin})" title="Cambiar intervalo">
+                                <span class="material-icons">timer</span>
+                            </button>
                         </div>
-                    `;
-                }).join('');
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function toggleProcessActive(jobId, activate) {
+            try {
+                const res = await fetch(`/api/admin/process-configs/${jobId}`, {
+                    method: 'PUT',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({is_active: activate})
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showSnackbar(`${jobId}: ${activate ? 'Activado' : 'Desactivado'}`, 'success');
+                    // Reload scheduler for this company
+                    const companyId = jobId.split('__')[0];
+                    if (companyId) await fetch(`/scheduler/reload/${companyId}`, {method: 'POST'});
+                    await loadJobs();
+                } else {
+                    showSnackbar(data.detail || 'Error', 'error');
+                }
+            } catch (e) { showSnackbar('Error: ' + e.message, 'error'); }
+        }
+
+        async function loadJobs() {
+            try {
+                const res = await fetch('/api/admin/process-configs');
+                const data = await res.json();
+                allProcessConfigs = data.configs || [];
+
+                // Build company filter buttons
+                const companies = [...new Set(allProcessConfigs.map(c => c.company_id).filter(Boolean))];
+                const filterContainer = document.getElementById('company-filter');
+                filterContainer.innerHTML = `<button class="company-filter-btn ${currentCompanyFilter === 'all' ? 'active' : ''}" data-company="all" onclick="filterByCompany('all')">Todas</button>` +
+                    companies.map(c => `<button class="company-filter-btn ${currentCompanyFilter === c ? 'active' : ''}" data-company="${c}" onclick="filterByCompany('${c}')">${c}</button>`).join('');
+
+                renderJobs();
             } catch (e) {
                 console.error('Error loading jobs:', e);
                 document.getElementById('jobs-container').innerHTML = `
