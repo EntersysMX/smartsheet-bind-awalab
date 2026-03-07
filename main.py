@@ -96,14 +96,9 @@ async def lifespan(app: FastAPI):
         if not settings.DEBUG_MODE:
             raise RuntimeError("Configuración inválida. Revise las variables de entorno.")
 
-    # Verificar conectividad
+    # Verificar conectividad por empresa
     try:
-        if settings.BIND_API_KEY:
-            bind_client = BindClient()
-            if bind_client.health_check():
-                logger.info("Conexión a Bind ERP verificada")
-            else:
-                logger.warning("No se pudo verificar conexión a Bind ERP")
+        from company_services import get_active_companies, get_bind_client_for_company
 
         if settings.SMARTSHEET_ACCESS_TOKEN:
             ss_service = SmartsheetService()
@@ -111,76 +106,27 @@ async def lifespan(app: FastAPI):
                 logger.info("Conexión a Smartsheet verificada")
             else:
                 logger.warning("No se pudo verificar conexión a Smartsheet")
+
+        companies = get_active_companies()
+        for company in companies:
+            try:
+                client = get_bind_client_for_company(company.id)
+                if client.health_check():
+                    logger.info(f"Conexión a Bind ERP verificada para '{company.id}'")
+                else:
+                    logger.warning(f"No se pudo verificar conexión a Bind para '{company.id}'")
+            except Exception as e:
+                logger.warning(f"Error verificando Bind para '{company.id}': {e}")
+
+        if not companies and settings.BIND_API_KEY:
+            bind_client = BindClient()
+            if bind_client.health_check():
+                logger.info("Conexión a Bind ERP verificada (config global)")
     except Exception as e:
         logger.warning(f"Error verificando conexiones: {e}")
 
-    # Configurar scheduler para inventario (leer intervalo de BD o usar default)
-    inventory_config = get_process_config("sync_inventory")
-    inventory_interval = inventory_config.interval_minutes if inventory_config else settings.SYNC_INVENTORY_INTERVAL_MINUTES
-    if inventory_interval > 0:
-        scheduler.add_job(
-            run_inventory_sync,
-            trigger=IntervalTrigger(minutes=inventory_interval),
-            id="sync_inventory",
-            name="Sincronización de Inventario",
-            replace_existing=True,
-        )
-        logger.info(
-            f"Job de inventario configurado cada {inventory_interval} minutos "
-            f"(desde {'BD' if inventory_config else 'default'})."
-        )
-
-    # Configurar scheduler para facturas (leer intervalo de BD o usar default)
-    invoices_config = get_process_config("sync_invoices")
-    invoices_interval = invoices_config.interval_minutes if invoices_config else settings.SYNC_INVOICES_INTERVAL_MINUTES
-    if invoices_interval > 0:
-        scheduler.add_job(
-            run_invoices_sync,
-            trigger=IntervalTrigger(minutes=invoices_interval),
-            id="sync_invoices",
-            name="Sincronización de Facturas Bind -> Smartsheet",
-            replace_existing=True,
-        )
-        logger.info(
-            f"Job de facturas configurado cada {invoices_interval} minutos "
-            f"(desde {'BD' if invoices_config else 'default'})."
-        )
-
-    # Configurar scheduler para catálogos de Bind (cada 2 horas por default)
-    catalog_jobs = [
-        ("sync_catalog_warehouses", run_sync_warehouses, "Sync Catálogo - Almacenes"),
-        ("sync_catalog_clients", run_sync_clients, "Sync Catálogo - Clientes"),
-        ("sync_catalog_products", run_sync_products, "Sync Catálogo - Productos"),
-        ("sync_catalog_providers", run_sync_providers, "Sync Catálogo - Proveedores"),
-        ("sync_catalog_users", run_sync_users, "Sync Catálogo - Usuarios"),
-        ("sync_catalog_currencies", run_sync_currencies, "Sync Catálogo - Monedas"),
-        ("sync_catalog_pricelists", run_sync_pricelists, "Sync Catálogo - Listas de Precios"),
-        ("sync_catalog_bankaccounts", run_sync_bankaccounts, "Sync Catálogo - Cuentas Bancarias"),
-        ("sync_catalog_banks", run_sync_banks, "Sync Catálogo - Bancos"),
-        ("sync_catalog_locations", run_sync_locations, "Sync Catálogo - Ubicaciones"),
-        ("sync_catalog_orders", run_sync_orders, "Sync Catálogo - Pedidos"),
-        ("sync_catalog_quotes", run_sync_quotes, "Sync Catálogo - Cotizaciones"),
-        ("sync_catalog_categories", run_sync_categories, "Sync Catálogo - Categorías"),
-        ("sync_catalog_accounts", run_sync_accounts, "Sync Catálogo - Cuentas Contables"),
-        ("sync_catalog_account_categories", run_sync_account_categories, "Sync Catálogo - Catálogo Cuentas SAT"),
-        ("sync_catalog_accounting_journals", run_sync_accounting_journals, "Sync Catálogo - Pólizas Contables"),
-        ("sync_catalog_webhooks", run_sync_webhooks, "Sync Catálogo - WebHooks"),
-        ("sync_catalog_webhook_subscriptions", run_sync_webhook_subscriptions, "Sync Catálogo - Suscripciones WebHooks"),
-        ("sync_catalog_invoices", run_sync_invoices, "Sync Catálogo - Facturas"),
-    ]
-
-    for job_id, job_func, job_name in catalog_jobs:
-        config = get_process_config(job_id)
-        if config and config.is_active:
-            interval = config.interval_minutes or 120
-            scheduler.add_job(
-                job_func,
-                trigger=IntervalTrigger(minutes=interval),
-                id=job_id,
-                name=job_name,
-                replace_existing=True,
-            )
-            logger.info(f"Job {job_id} configurado cada {interval} minutos")
+    # Configurar scheduler dinámico desde ProcessConfigs activos
+    schedule_all_active_jobs()
 
     # Iniciar scheduler si hay jobs configurados
     if scheduler.get_jobs():
@@ -339,63 +285,137 @@ async def run_catalog_sync(catalog_name: str, job_id: str, job_name: str):
         raise
 
 
-# Funciones específicas para cada catálogo (necesarias para el scheduler)
-async def run_sync_warehouses():
-    return await run_catalog_sync("warehouses", "sync_catalog_warehouses", "Sync Catálogo - Almacenes")
+# Mapeo de job_type base -> catalog_name para catálogos
+CATALOG_JOB_MAP = {
+    "sync_catalog_warehouses": "warehouses",
+    "sync_catalog_clients": "clients",
+    "sync_catalog_products": "products",
+    "sync_catalog_providers": "providers",
+    "sync_catalog_users": "users",
+    "sync_catalog_currencies": "currencies",
+    "sync_catalog_pricelists": "pricelists",
+    "sync_catalog_bankaccounts": "bankaccounts",
+    "sync_catalog_banks": "banks",
+    "sync_catalog_locations": "locations",
+    "sync_catalog_orders": "orders",
+    "sync_catalog_quotes": "quotes",
+    "sync_catalog_categories": "categories",
+    "sync_catalog_accounts": "accounts",
+    "sync_catalog_account_categories": "account_categories",
+    "sync_catalog_accounting_journals": "accounting_journals",
+    "sync_catalog_webhooks": "webhooks",
+    "sync_catalog_webhook_subscriptions": "webhook_subscriptions",
+    "sync_catalog_invoices": "invoices",
+}
 
-async def run_sync_clients():
-    return await run_catalog_sync("clients", "sync_catalog_clients", "Sync Catálogo - Clientes")
 
-async def run_sync_products():
-    return await run_catalog_sync("products", "sync_catalog_products", "Sync Catálogo - Productos")
+def parse_job_id(job_id: str) -> tuple[str, str]:
+    """Extrae company_id y job_type base de un job_id.
 
-async def run_sync_providers():
-    return await run_catalog_sync("providers", "sync_catalog_providers", "Sync Catálogo - Proveedores")
+    Formato: "{company_id}__{job_type}" o "{job_type}" (legacy sin prefijo).
 
-async def run_sync_users():
-    return await run_catalog_sync("users", "sync_catalog_users", "Sync Catálogo - Usuarios")
+    Returns:
+        (company_id or None, base_job_type)
+    """
+    if "__" in job_id:
+        company_id, job_type = job_id.split("__", 1)
+        return company_id, job_type
+    return None, job_id
 
-async def run_sync_currencies():
-    return await run_catalog_sync("currencies", "sync_catalog_currencies", "Sync Catálogo - Monedas")
 
-async def run_sync_pricelists():
-    return await run_catalog_sync("pricelists", "sync_catalog_pricelists", "Sync Catálogo - Listas de Precios")
+async def run_dynamic_job(job_id: str, job_name: str):
+    """Dispatcher genérico que ejecuta cualquier job basado en su job_id.
 
-async def run_sync_bankaccounts():
-    return await run_catalog_sync("bankaccounts", "sync_catalog_bankaccounts", "Sync Catálogo - Cuentas Bancarias")
+    Parsea el job_id para determinar el tipo de sync y lo ejecuta
+    con el company_id correcto.
+    """
+    _, base_type = parse_job_id(job_id)
 
-async def run_sync_locations():
-    return await run_catalog_sync("locations", "sync_catalog_locations", "Sync Catálogo - Ubicaciones")
+    if base_type == "sync_inventory":
+        return await run_inventory_sync(job_id=job_id)
+    elif base_type == "sync_invoices":
+        return await run_invoices_sync(job_id=job_id)
+    elif base_type in CATALOG_JOB_MAP:
+        catalog_name = CATALOG_JOB_MAP[base_type]
+        return await run_catalog_sync(catalog_name, job_id=job_id, job_name=job_name)
+    else:
+        logger.error(f"Tipo de job desconocido: {base_type} (job_id: {job_id})")
+        return {"success": False, "error": f"Unknown job type: {base_type}"}
 
-async def run_sync_orders():
-    return await run_catalog_sync("orders", "sync_catalog_orders", "Sync Catálogo - Pedidos")
 
-async def run_sync_quotes():
-    return await run_catalog_sync("quotes", "sync_catalog_quotes", "Sync Catálogo - Cotizaciones")
+def schedule_all_active_jobs():
+    """Registra todos los ProcessConfigs activos en el scheduler.
 
-async def run_sync_banks():
-    return await run_catalog_sync("banks", "sync_catalog_banks", "Sync Catálogo - Bancos")
+    Itera sobre TODOS los ProcessConfigs activos (de todas las empresas)
+    y crea un job en el scheduler para cada uno.
+    """
+    configs = get_all_process_configs()
+    registered = 0
 
-async def run_sync_categories():
-    return await run_catalog_sync("categories", "sync_catalog_categories", "Sync Catálogo - Categorías")
+    for config in configs:
+        if not config.is_active:
+            continue
 
-async def run_sync_accounts():
-    return await run_catalog_sync("accounts", "sync_catalog_accounts", "Sync Catálogo - Cuentas Contables")
+        interval = config.interval_minutes or 120
+        job_id = config.job_id
+        job_name = config.name
 
-async def run_sync_account_categories():
-    return await run_catalog_sync("account_categories", "sync_catalog_account_categories", "Sync Catálogo - Catálogo Cuentas SAT")
+        # Crear closure para capturar job_id y job_name correctamente
+        def make_job_func(jid, jname):
+            async def job_func():
+                return await run_dynamic_job(jid, jname)
+            return job_func
 
-async def run_sync_accounting_journals():
-    return await run_catalog_sync("accounting_journals", "sync_catalog_accounting_journals", "Sync Catálogo - Pólizas Contables")
+        scheduler.add_job(
+            make_job_func(job_id, job_name),
+            trigger=IntervalTrigger(minutes=interval),
+            id=job_id,
+            name=job_name,
+            replace_existing=True,
+        )
+        registered += 1
+        logger.info(f"Job registrado: {job_id} ({job_name}) cada {interval} min [empresa: {config.company_id or 'legacy'}]")
 
-async def run_sync_webhooks():
-    return await run_catalog_sync("webhooks", "sync_catalog_webhooks", "Sync Catálogo - WebHooks")
+    logger.info(f"Scheduler: {registered} jobs registrados desde ProcessConfigs activos")
 
-async def run_sync_webhook_subscriptions():
-    return await run_catalog_sync("webhook_subscriptions", "sync_catalog_webhook_subscriptions", "Sync Catálogo - Suscripciones WebHooks")
 
-async def run_sync_invoices():
-    return await run_catalog_sync("invoices", "sync_catalog_invoices", "Sync Catálogo - Facturas")
+def schedule_company_jobs(company_id: str):
+    """Registra los jobs activos de una empresa específica en el scheduler.
+
+    Útil para agregar jobs dinámicamente cuando se activa una empresa
+    sin reiniciar el servidor.
+    """
+    configs = get_all_process_configs(company_id=company_id)
+    registered = 0
+
+    for config in configs:
+        if not config.is_active:
+            # Remover job si estaba registrado
+            if scheduler.get_job(config.job_id):
+                scheduler.remove_job(config.job_id)
+                logger.info(f"Job removido: {config.job_id}")
+            continue
+
+        interval = config.interval_minutes or 120
+        job_id = config.job_id
+        job_name = config.name
+
+        def make_job_func(jid, jname):
+            async def job_func():
+                return await run_dynamic_job(jid, jname)
+            return job_func
+
+        scheduler.add_job(
+            make_job_func(job_id, job_name),
+            trigger=IntervalTrigger(minutes=interval),
+            id=job_id,
+            name=job_name,
+            replace_existing=True,
+        )
+        registered += 1
+        logger.info(f"Job registrado: {job_id} cada {interval} min")
+
+    logger.info(f"Scheduler: {registered} jobs registrados para empresa '{company_id}'")
 
 
 def verify_smartsheet_signature(
@@ -640,13 +660,54 @@ async def list_scheduler_jobs():
     """Lista los jobs programados en el scheduler."""
     jobs = []
     for job in scheduler.get_jobs():
+        company_id, base_type = parse_job_id(job.id)
         jobs.append({
             "id": job.id,
             "name": job.name,
+            "company_id": company_id,
+            "base_type": base_type,
             "next_run": job.next_run_time.isoformat() if job.next_run_time else None,
         })
 
-    return {"jobs": jobs}
+    return {"jobs": jobs, "total": len(jobs)}
+
+
+@app.post("/scheduler/reload")
+async def reload_scheduler_jobs():
+    """Recarga todos los jobs del scheduler desde la base de datos.
+
+    Útil después de agregar/modificar empresas o ProcessConfigs.
+    """
+    # Remover todos los jobs actuales
+    for job in scheduler.get_jobs():
+        scheduler.remove_job(job.id)
+
+    # Re-registrar desde BD
+    schedule_all_active_jobs()
+
+    jobs = scheduler.get_jobs()
+    return {
+        "success": True,
+        "message": f"Scheduler recargado: {len(jobs)} jobs activos",
+        "jobs": [{"id": j.id, "name": j.name} for j in jobs],
+    }
+
+
+@app.post("/scheduler/reload/{company_id}")
+async def reload_company_jobs(company_id: str):
+    """Recarga los jobs de una empresa específica sin afectar las demás."""
+    schedule_company_jobs(company_id)
+
+    company_jobs = [
+        {"id": j.id, "name": j.name}
+        for j in scheduler.get_jobs()
+        if parse_job_id(j.id)[0] == company_id or (parse_job_id(j.id)[0] is None and company_id == "awalab")
+    ]
+    return {
+        "success": True,
+        "message": f"Jobs de '{company_id}' recargados",
+        "jobs": company_jobs,
+    }
 
 
 # ========== ENDPOINTS DE ADMINISTRACIÓN ==========
