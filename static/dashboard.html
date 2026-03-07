@@ -1728,6 +1728,38 @@
                 </div>
             </div>
         </div>
+
+        <!-- Empresas Section -->
+        <div class="card" style="margin-top:16px">
+            <div class="card-header">
+                <div class="card-title">
+                    <span class="material-icons-outlined" style="color:#90caf9">business</span>
+                    Empresas
+                </div>
+                <button class="icon-btn" onclick="document.getElementById('add-company-form').style.display = document.getElementById('add-company-form').style.display === 'none' ? 'flex' : 'none'" title="Agregar empresa">
+                    <span class="material-icons-outlined">add</span>
+                </button>
+            </div>
+            <div class="card-content">
+                <div id="add-company-form" style="display:none;flex-direction:column;gap:8px;padding:12px;background:#1a1a2e;border-radius:8px;margin-bottom:12px">
+                    <div style="display:grid;grid-template-columns:1fr 2fr;gap:8px">
+                        <input id="new-co-id" placeholder="ID (slug)" style="padding:8px;border-radius:6px;border:1px solid #333;background:#0d0d1a;color:#fff;font-size:0.85rem">
+                        <input id="new-co-name" placeholder="Nombre de empresa" style="padding:8px;border-radius:6px;border:1px solid #333;background:#0d0d1a;color:#fff;font-size:0.85rem">
+                    </div>
+                    <input id="new-co-key" placeholder="Bind API Key" type="password" style="padding:8px;border-radius:6px;border:1px solid #333;background:#0d0d1a;color:#fff;font-size:0.85rem">
+                    <div style="display:flex;gap:8px;justify-content:flex-end">
+                        <button onclick="document.getElementById('add-company-form').style.display='none'" style="padding:6px 16px;border-radius:6px;border:1px solid #555;background:transparent;color:#aaa;cursor:pointer">Cancelar</button>
+                        <button onclick="addCompany()" style="padding:6px 16px;border-radius:6px;border:none;background:#1976d2;color:#fff;cursor:pointer">Crear Empresa</button>
+                    </div>
+                </div>
+                <div id="companies-container">
+                    <div class="empty-state">
+                        <span class="material-icons-outlined">hourglass_empty</span>
+                        <p>Cargando empresas...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
     </main>
 
     <!-- Configuration Modal -->
@@ -2475,12 +2507,75 @@
         });
 
         // Refresh all
+        async function loadCompanies() {
+            try {
+                const res = await fetch('/api/admin/companies');
+                const data = await res.json();
+                const container = document.getElementById('companies-container');
+                if (!data.companies || data.companies.length === 0) {
+                    container.innerHTML = '<div class="empty-state"><p>No hay empresas registradas</p></div>';
+                    return;
+                }
+                container.innerHTML = data.companies.map(c => `
+                    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 12px;border-bottom:1px solid #222;gap:8px">
+                        <div style="flex:1;min-width:0">
+                            <span style="font-weight:600;color:#e0e0e0">${c.name}</span>
+                            <span style="color:#666;font-size:0.8rem;margin-left:6px">${c.id}</span>
+                            <span style="font-size:0.7rem;padding:2px 6px;border-radius:8px;margin-left:6px;${c.is_active ? 'background:#1b5e20;color:#81c784' : 'background:#b71c1c33;color:#ef9a9a'}">${c.is_active ? 'Activa' : 'Inactiva'}</span>
+                            ${c.has_api_key ? '<span style="font-size:0.65rem;color:#666;margin-left:4px">🔑</span>' : ''}
+                        </div>
+                        <div style="display:flex;gap:4px;flex-shrink:0">
+                            <button onclick="testCompanyConnection('${c.id}')" class="icon-btn" title="Test conexión"><span class="material-icons-outlined" style="font-size:18px">wifi_tethering</span></button>
+                            <button onclick="reloadCompanyJobs('${c.id}')" class="icon-btn" title="Recargar jobs"><span class="material-icons-outlined" style="font-size:18px">refresh</span></button>
+                        </div>
+                    </div>
+                `).join('');
+            } catch (e) { console.error('Error loading companies:', e); }
+        }
+
+        async function testCompanyConnection(companyId) {
+            try {
+                showSnackbar(`Probando conexión de ${companyId}...`, 'info');
+                const res = await fetch(`/api/admin/companies/${companyId}/test-connection`, {method:'POST'});
+                const data = await res.json();
+                showSnackbar(data.bind_connected ? `${companyId}: Conexión OK` : `${companyId}: ${data.message}`, data.bind_connected ? 'success' : 'error');
+            } catch (e) { showSnackbar('Error: ' + e.message, 'error'); }
+        }
+
+        async function reloadCompanyJobs(companyId) {
+            try {
+                const res = await fetch(`/scheduler/reload/${companyId}`, {method:'POST'});
+                const data = await res.json();
+                showSnackbar(data.message || 'Jobs recargados', 'success');
+                await loadJobs();
+            } catch (e) { showSnackbar('Error: ' + e.message, 'error'); }
+        }
+
+        async function addCompany() {
+            const id = document.getElementById('new-co-id').value.trim();
+            const name = document.getElementById('new-co-name').value.trim();
+            const key = document.getElementById('new-co-key').value.trim();
+            if (!id || !name || !key) { showSnackbar('Completa todos los campos', 'error'); return; }
+            try {
+                const res = await fetch('/api/admin/companies', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({id, name, bind_api_key:key})});
+                const data = await res.json();
+                if (res.ok) {
+                    showSnackbar(data.message || 'Empresa creada', 'success');
+                    document.getElementById('add-company-form').style.display = 'none';
+                    document.getElementById('new-co-id').value = '';
+                    document.getElementById('new-co-name').value = '';
+                    document.getElementById('new-co-key').value = '';
+                    await loadCompanies();
+                } else { showSnackbar(data.detail || 'Error creando empresa', 'error'); }
+            } catch (e) { showSnackbar('Error: ' + e.message, 'error'); }
+        }
+
         async function refreshAll() {
             if (isLoading) return;
 
             setLoading(true);
             try {
-                await Promise.all([loadStats(), loadJobs(), loadHistory()]);
+                await Promise.all([loadStats(), loadJobs(), loadHistory(), loadCompanies()]);
             } catch (e) {
                 console.error('Error refreshing:', e);
             } finally {
